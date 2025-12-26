@@ -1,0 +1,25 @@
+# --- Ignorar Dependências (O mais importante) ---
+# Ignora node_modules na raiz e em qualquer subpasta (como no frontend)
+node_modules/
+**/node_modules/
+
+# --- Ignorar Builds do Frontend (Next.js/React) ---
+# Ignora a pasta de build que aparece na sua imagem do frontend
+.next/
+frontend/.next/
+build/
+dist/
+
+# --- Ignorar Arquivos de Sistema e Logs ---
+.DS_Store
+Thumbs.db
+*.log
+# Ignorando o log específico que aparece na sua raiz
+backend_log
+
+# --- Ignorar Arquivos de Ambiente (Segurança) ---
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local

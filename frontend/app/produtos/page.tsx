@@ -1,0 +1,568 @@
+"use client"
+
+import { useState, useEffect } from "react"
+import { useToast } from "@/hooks/use-toast"
+import { Sidebar } from "@/components/sidebar"
+import { Search, MoreVertical, Pencil, Trash2, Camera } from "lucide-react"
+import "./produtos.css"
+import { Pagination } from "@/components/Pagination"
+import { ModalNovaCategoria } from "./components/modal-nova-categoria"
+import { ModalFornecedor } from "./components/modal-fornecedor"
+import { ModalNovoFabricante } from "./components/modal-novo-fabricante"
+
+import { ActionMenu } from "./components/action-menu"
+import { ModalCadastroProduto } from "./components/modal-cadastro-produto"
+
+
+export default function ProdutosPage() {
+
+  // Estado para controlar qual popup está aberto
+  // Estado para controlar qual popup está aberto
+  const [showAddModal, setShowAddModal] = useState(false) // Unified Create/Edit Modal
+  
+  const [showNewCategoryModal, setShowNewCategoryModal] = useState(false)
+  const [showNewFornecedorModal, setShowNewFornecedorModal] = useState(false)
+  const [showNewFabricanteModal, setShowNewFabricanteModal] = useState(false)
+
+  const [editingProduct, setEditingProduct] = useState<any | null>(null)
+  const [activeTab, setActiveTab] = useState("itens") // 'itens' | 'compras' | 'fornecedores' | 'categorias'
+  
+  // Custom Action Menu State (Portal)
+  const [activeActionMenu, setActiveActionMenu] = useState<{ 
+    product: any, 
+    position: { top: number, left: number } 
+  } | null>(null)
+
+  const { toast } = useToast()
+  const [isLoading, setIsLoading] = useState(true)
+
+  // Estado dos dados
+  const [produtos, setProdutos] = useState<any[]>([])
+  const [fornecedoresList, setFornecedoresList] = useState<any[]>([])
+  const [categoriasList, setCategoriasList] = useState<any[]>([])
+
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(10)
+
+  // Filter State
+  const [searchTerm, setSearchTerm] = useState("")
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState("")
+  const [selectedFabricanteFilter, setSelectedFabricanteFilter] = useState("")
+
+  // Form State
+  const [categorias, setCategorias] = useState<any[]>([])
+  const [fabricantes, setFabricantes] = useState<any[]>([])
+  // formData moved to ModalCadastroProduto
+
+  useEffect(() => {
+    if (activeTab === 'itens') fetchProdutos()
+    if (activeTab === 'fornecedores') fetchFornecedores()
+    // Always fetch dropdown data
+    fetchCategoriasList() 
+    fetchFabricantesList()
+  }, [activeTab])
+
+  const fetchCategoriasList = async () => {
+    try {
+      // Don't toggle global loading if we are just fetching dropdown data in background for other tabs
+      // But if we are in 'categorias' tab, we might want loading. 
+      // For simplicity, let's keep it silent or minimal to avoid flickering if tab is not 'categorias'
+      // But user complained about 'fetchCategorias is not defined' so we just fix the reference.
+      // To be safe with the loading state collision:
+      if (activeTab === 'categorias') setIsLoading(true)
+      
+      const response = await fetch('/api/categorias')
+      if (response.ok) {
+        const data = await response.json()
+        setCategoriasList(data) // For the table
+        setCategorias(data)     // For the dropdown
+      }
+    } catch (e) {
+      console.error(e)
+    } finally {
+      if (activeTab === 'categorias') setIsLoading(false)
+    }
+  }
+
+  const fetchFabricantesList = async () => {
+    try {
+      const response = await fetch('/api/fabricantes')
+      if (response.ok) {
+        const data = await response.json()
+        setFabricantes(data) // Dropdown and potentially list if we had a tab for them
+      }
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
+  const fetchFornecedores = async () => {
+    try {
+      setIsLoading(true)
+      const response = await fetch('/api/fornecedores')
+      if (response.ok) {
+        setFornecedoresList(await response.json())
+      }
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const fetchProdutos = async () => {
+    try {
+      setIsLoading(true)
+      const response = await fetch('/api/produtos')
+      if (!response.ok) throw new Error('Falha ao carregar produtos')
+      const data = await response.json()
+      setProdutos(data)
+    } catch (error) {
+      console.error('Erro ao buscar produtos:', error)
+      toast({
+        title: "Erro",
+        description: "Não foi possível carregar a lista de produtos.",
+        variant: "destructive"
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  // Filtering Logic (Client-Side)
+  const getFilteredItems = () => {
+    let items = activeTab === 'itens' ? produtos : 
+                activeTab === 'fornecedores' ? fornecedoresList :
+                activeTab === 'categorias' ? categoriasList : []
+
+    // Search Bar Filter
+    if (searchTerm) {
+      const lowerTerm = searchTerm.toLowerCase()
+      items = items.filter(item => 
+        item.nome?.toLowerCase().includes(lowerTerm) || 
+        item.codigoBarras?.toLowerCase().includes(lowerTerm)
+      )
+    }
+
+    // Sidebar Filters (Only for Itens)
+    if (activeTab === 'itens') {
+      if (selectedCategoryFilter) {
+        items = items.filter(p => p.idCategoria === Number(selectedCategoryFilter) || p.categoria?.id === Number(selectedCategoryFilter))
+      }
+      if (selectedFabricanteFilter) {
+        items = items.filter(p => p.idFabricante === Number(selectedFabricanteFilter) || p.fabricante?.id === Number(selectedFabricanteFilter))
+      }
+    }
+
+    return items
+  }
+
+  const currentItemsList = getFilteredItems()
+
+  const totalPages = Math.ceil(currentItemsList.length / itemsPerPage)
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const endIndex = startIndex + itemsPerPage
+  const currentDisplayItems = currentItemsList.slice(startIndex, endIndex)
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setCurrentPage(newPage)
+    }
+  }
+
+  const handleItemsPerPageChange = (items: number) => {
+    setItemsPerPage(items)
+    setCurrentPage(1) 
+  }
+
+  const handleTabs = (tab: string) => {
+    setActiveTab(tab)
+    setCurrentPage(1)
+  }
+
+  const tabs = [
+    { id: "itens", label: "Itens" },
+    { id: "compras", label: "Compras" },
+    { id: "fornecedores", label: "Fornecedores" },
+    { id: "categorias", label: "Categorias" },
+  ]
+
+  // Helpers
+  const formatCurrency = (value: number | string) => {
+    const numValue = Number(value)
+    if (isNaN(numValue)) return "R$ 0,00"
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(numValue)
+  }
+
+  const getProductStatus = (estoque: number) => {
+    if (estoque === 0) return { label: "Fora de estoque", className: "status-badge out" }
+    if (estoque <= 5) return { label: "Baixo estoque", className: "status-badge low" }
+    return null
+  }
+
+  const openActionMenu = (e: React.MouseEvent, product: any) => {
+    e.stopPropagation()
+    const rect = e.currentTarget.getBoundingClientRect()
+    // Calculate position: right aligned if close to edge, or left aligned
+    // Simple approach: left aligned to button, slightly below
+    setActiveActionMenu({
+      product,
+      position: {
+        top: rect.bottom + 5,
+        left: rect.left
+      }
+    })
+  }
+
+  // Função para excluir um produto
+  const handleDelete = async (id: number) => {
+    if (confirm("Tem certeza que deseja excluir este produto?")) {
+      try {
+        const response = await fetch(`/api/produtos/${id}`, {
+          method: 'DELETE'
+        })
+        
+        if (!response.ok) throw new Error('Falha ao excluir produto')
+
+        setProdutos(produtos.filter(p => p.id !== id))
+        setActiveActionMenu(null)
+        toast({
+          title: "Sucesso",
+          description: "Produto excluído com sucesso."
+        })
+      } catch (error) {
+        console.error('Erro ao excluir produto:', error)
+        toast({
+          title: "Erro",
+          description: "Não foi possível excluir o produto.",
+          variant: "destructive"
+        })
+      }
+    }
+  }
+
+  // Função para abrir o popup de visualização/edição quando clicar nos 3 pontos
+  const handleViewProduct = (product: any) => {
+    setEditingProduct(product)
+    setShowAddModal(true)
+    setActiveActionMenu(null)
+  }
+
+  const handleProductSuccess = () => {
+    fetchProdutos()
+    // setShowAddModal(false) // Modal handles closing or keeping open
+  }
+
+  const handleCategorySuccess = () => {
+    fetchCategoriasList()
+  }
+
+  const handleFabricanteSuccess = () => {
+    fetchFabricantesList()
+  }
+
+  return (
+    <div className="produtos-layout">
+      {/* Sidebar lateral - componente já existente */}
+      <Sidebar />
+
+      <div className="produtos-content">
+        {/* Header com título e busca */}
+        <div className="produtos-header">
+          <h1>Produtos</h1>
+          <div className="search-bar">
+            {/* Header Input agora é a busca principal */}
+            <input 
+              type="text" 
+              placeholder="Procure por nome" 
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value)
+                setCurrentPage(1)
+              }}
+            />
+            <Search className="search-icon" />
+          </div>
+        </div>
+
+        <div className="produtos-main">
+            {/* Painel de Filtros à esquerda */}
+          <aside className="filters-panel">
+            <h3>Filtros</h3>
+
+            {activeTab === 'itens' && (
+              <>
+                {/* Removido o input de texto duplicado */}
+                
+                <div className="filter-group">
+                  <label>Categorias</label>
+                  <select 
+                    value={selectedCategoryFilter}
+                    onChange={(e) => setSelectedCategoryFilter(e.target.value)}
+                  >
+                    <option value="">Todas as Categorias</option>
+                     {categorias.map((c: any) => (
+                      <option key={c.id} value={c.id}>{c.nome}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="filter-group">
+                  <label>Fabricantes</label>
+                  <select
+                    value={selectedFabricanteFilter}
+                    onChange={(e) => setSelectedFabricanteFilter(e.target.value)}
+                  >
+                    <option value="">Todos os Fabricantes</option>
+                    {fabricantes.map((f: any) => (
+                      <option key={f.id} value={f.id}>{f.nome}</option>
+                    ))}
+                  </select>
+                </div>
+              </>
+            )}
+
+            {activeTab === 'fornecedores' && (
+              <>
+                 <div className="filter-search">
+                  <input type="text" placeholder="Buscar por Nome" />
+                  <Search className="filter-search-icon" />
+                </div>
+                 <div className="filter-search" style={{ marginTop: 10 }}>
+                  <input type="text" placeholder="Buscar por CNPJ" />
+                  <Search className="filter-search-icon" />
+                </div>
+              </>
+            )}
+
+            {(activeTab === 'categorias' || activeTab === 'compras') && (
+               <div className="filter-search">
+                  <input type="text" placeholder="Buscar..." />
+                  <Search className="filter-search-icon" />
+                </div>
+            )}
+
+            <button className="btn-filter">Pesquisar</button>
+            {/* A pesquisa é 'live' ao alterar os inputs, mas o botão pode servir para forçar refresh ou UX */}
+          </aside>
+
+          {/* Área principal com tabela */}
+          <div className="table-section">
+            {/* Abas superiores */}
+            <div className="tabs-container">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  className={`tab ${activeTab === tab.id ? "active" : ""}`}
+                  onClick={() => handleTabs(tab.id)}
+                >
+                  {tab.label}
+                </button>
+              ))}
+
+              {/* Botão Dinâmico */}
+              {activeTab === 'itens' && (
+                <button className="btn-cadastrar" onClick={() => {
+                  setEditingProduct(null)
+                  setShowAddModal(true)
+                }}>
+                  Cadastrar Produto +
+                </button>
+              )}
+              {activeTab === 'fornecedores' && (
+                <button className="btn-cadastrar" onClick={() => setShowNewFornecedorModal(true)}>
+                  Novo Fornecedor +
+                </button>
+              )}
+              {activeTab === 'categorias' && (
+                <button className="btn-cadastrar" onClick={() => setShowNewCategoryModal(true)}>
+                  Nova Categoria +
+                </button>
+              )}
+               {activeTab === 'compras' && (
+                <button className="btn-cadastrar" onClick={() => console.log("Nova Entrada")}>
+                  Nova Entrada +
+                </button>
+              )}
+            </div>
+
+            {/* Tabela Dinâmica */}
+            <div className="table-wrapper">
+              
+              {/* TABELA ITENS */}
+              {activeTab === 'itens' && (
+                <table className="produtos-table">
+                  <thead>
+                    <tr>
+                      <th className="w-[5%]">Ação</th>
+                      <th className="w-[30%]">Nome</th>
+                      <th className="w-[15%]">Categoria</th>
+                      <th className="w-[10%]">Preço</th>
+                      <th className="w-[10%]">Código</th>
+                      <th className="w-[8%] text-center">Estoque</th>
+                      <th className="w-[10%] text-center">Status</th>
+                      <th className="w-[12%]">Fabricante</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {isLoading ? (
+                      <tr><td colSpan={8} className="text-center py-8">Carregando...</td></tr>
+                    ) : currentDisplayItems.length === 0 ? (
+                      <tr><td colSpan={8} className="text-center py-8">Nenhum produto encontrado</td></tr>
+                    ) : currentDisplayItems.map((produto) => {
+                      const status = getProductStatus(produto.estoque || 0)
+                      return (
+                      <tr key={produto.id}>
+                        <td>
+                          <div className="action-cell">
+                            <button
+                              className="btn-action"
+                              onClick={(e) => openActionMenu(e, produto)}
+                            >
+                              <MoreVertical size={18} />
+                            </button>
+                          </div>
+                        </td>
+                        <td>{produto.nome}</td>
+                        <td>{produto.categoria?.nome || produto.categoria || "Sem Categoria"}</td>
+                        <td>{formatCurrency(produto.precoVenda || produto.preco)}</td>
+                        <td>{produto.codigoBarras || produto.codigo}</td>
+                        <td>{produto.estoque || 0}</td>
+                        <td>
+                          {status && <span className={status.className}>{status.label}</span>}
+                        </td>
+                        <td>{produto.fabricante?.nome || "-"}</td>
+                      </tr>
+                    )})}
+                  </tbody>
+                </table>
+              )}
+
+              {/* TABELA FORNECEDORES */}
+              {activeTab === 'fornecedores' && (
+                <table className="produtos-table">
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>Nome</th>
+                      <th>CNPJ</th>
+                      <th>Email</th>
+                      <th>Telefone</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {isLoading ? (
+                      <tr><td colSpan={5} className="text-center py-8">Carregando...</td></tr>
+                    ) : currentDisplayItems.length === 0 ? (
+                      <tr><td colSpan={5} className="text-center py-8">Nenhum fornecedor encontrado</td></tr>
+                    ) : currentDisplayItems.map((f: any) => (
+                      <tr key={f.id}>
+                        <td>{f.id}</td>
+                        <td>{f.nome}</td>
+                        <td>{f.cnpj || "-"}</td>
+                        <td>{f.email || "-"}</td>
+                        <td>{f.telefone || "-"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+
+               {/* TABELA CATEGORIAS */}
+               {activeTab === 'categorias' && (
+                <table className="produtos-table">
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>Nome</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {isLoading ? (
+                      <tr><td colSpan={2} className="text-center py-8">Carregando...</td></tr>
+                    ) : currentDisplayItems.length === 0 ? (
+                      <tr><td colSpan={2} className="text-center py-8">Nenhuma categoria encontrada</td></tr>
+                    ) : currentDisplayItems.map((c: any) => (
+                      <tr key={c.id}>
+                        <td>{c.id}</td>
+                        <td>{c.nome}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+
+              {/* TABELA COMPRAS (Placeholder) */}
+              {activeTab === 'compras' && (
+                <div style={{ padding: '2rem', textAlign: 'center', color: '#666' }}>
+                  <h3>Módulo de Compras em desenvolvimento</h3>
+                </div>
+              )}
+
+            </div>
+
+            {/* Paginação */}
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              itemsPerPage={itemsPerPage}
+              onPageChange={handlePageChange}
+              onItemsPerPageChange={handleItemsPerPageChange}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* ============================================ */}
+      {/* POPUP 1: Cadastrar novo item (Tela Produtos 3) */}
+      {/* Aparece ao clicar no botão "Cadastrar +" */}
+      {/* ============================================ */}
+      <ModalCadastroProduto 
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onSuccess={handleProductSuccess}
+        produtoParaEditar={editingProduct}
+      />
+
+      {/* ============================================ */}
+      {/* POPUP 3: Nova Categoria */}
+      {/* ============================================ */}
+      <ModalNovaCategoria 
+        isOpen={showNewCategoryModal}
+        onClose={() => setShowNewCategoryModal(false)}
+        onSuccess={() => {
+           handleCategorySuccess()
+           // Se estamos na aba categorias, atualiza a lista principal também
+           if (activeTab === 'categorias') fetchCategoriasList()
+        }}
+      />
+
+      {/* POPUP 4: Novo Fornecedor */}
+      <ModalFornecedor
+        isOpen={showNewFornecedorModal}
+        onClose={() => setShowNewFornecedorModal(false)}
+        onSuccess={() => {
+          if (activeTab === 'fornecedores') fetchFornecedores()
+        }}
+      />
+
+      <ModalNovoFabricante
+        isOpen={showNewFabricanteModal}
+        onClose={() => setShowNewFabricanteModal(false)}
+        onSuccess={handleFabricanteSuccess}
+      />
+
+      <ActionMenu 
+        isOpen={!!activeActionMenu}
+        position={activeActionMenu?.position || { top: 0, left: 0 }}
+        onClose={() => setActiveActionMenu(null)}
+        onEdit={() => activeActionMenu && handleViewProduct(activeActionMenu.product)}
+        onDelete={() => activeActionMenu && handleDelete(activeActionMenu.product.id)}
+      />
+    </div>
+  )
+}

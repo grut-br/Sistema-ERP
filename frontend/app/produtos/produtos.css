@@ -1,0 +1,589 @@
+/* ===================================== */
+/* Layout Principal */
+/* ===================================== */
+.produtos-layout {
+  display: flex;
+  min-height: 100vh;
+  background-color: #f5f5f5;
+}
+
+.produtos-content {
+  flex: 1;
+  margin-left: 190px;
+  padding: 2rem;
+}
+
+/* ===================================== */
+/* Header */
+/* ===================================== */
+.produtos-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.produtos-header h1 {
+  font-size: 2rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.search-bar {
+  position: relative;
+  width: 400px;
+}
+
+.search-bar input {
+  width: 100%;
+  padding: 0.75rem 2.5rem 0.75rem 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 0.875rem;
+}
+
+.search-icon {
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #6b7280;
+}
+
+/* ===================================== */
+/* Layout Principal (Filtros + Tabela) */
+/* ===================================== */
+.produtos-main {
+  display: flex;
+  gap: 1.5rem;
+  align-items: flex-start;
+}
+
+/* ===================================== */
+/* Painel de Filtros (Esquerda) */
+/* ===================================== */
+.filters-panel {
+  width: 300px;
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  height: fit-content;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.filters-panel h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+  color: #1f2937;
+}
+
+.filter-search {
+  position: relative;
+  margin-bottom: 1.5rem;
+}
+
+.filter-search input {
+  width: 100%;
+  padding: 0.75rem 2.5rem 0.75rem 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 0.875rem;
+}
+
+.filter-search-icon {
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #6b7280;
+  width: 18px;
+  height: 18px;
+}
+
+.filter-group {
+  margin-bottom: 1.5rem;
+}
+
+.filter-group label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 0.5rem;
+}
+
+.filter-group select {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  background-color: white;
+}
+
+.btn-filter {
+  width: 100%;
+  padding: 0.875rem;
+  background-color: #10b981;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  margin-bottom: 1rem;
+}
+
+.btn-filter:hover {
+  background-color: #059669;
+}
+
+.btn-new {
+  width: 100%;
+  padding: 0.875rem;
+  background-color: white;
+  color: #1f2937;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.btn-new:hover {
+  background-color: #f9fafb;
+}
+
+/* ===================================== */
+/* Seção da Tabela */
+/* ===================================== */
+.table-section {
+  flex: 1;
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* ===================================== */
+/* Abas Superiores */
+/* ===================================== */
+.tabs-container {
+  display: flex;
+  gap: 0.5rem;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+  align-items: center;
+}
+
+.tab {
+  padding: 0.625rem 1.25rem;
+  border: none;
+  background-color: #f3f4f6;
+  color: #6b7280;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.tab:hover {
+  background-color: #e5e7eb;
+}
+
+.tab.active {
+  background-color: #4b5563;
+  color: white;
+}
+
+.btn-cadastrar {
+  margin-left: auto;
+  padding: 0.625rem 1.5rem;
+  background-color: #10b981;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+
+.btn-cadastrar:hover {
+  background-color: #059669;
+}
+
+/* ===================================== */
+/* Tabela de Produtos */
+/* ===================================== */
+.table-wrapper {
+  overflow-x: auto;
+}
+
+.produtos-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+/* Cabeçalho verde da tabela */
+.produtos-table thead {
+  background-color: #10b981;
+}
+
+.produtos-table th {
+  padding: 1rem;
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: white;
+  white-space: nowrap;
+}
+
+.produtos-table tbody tr {
+  border-bottom: 1px solid #e5e7eb;
+  transition: background-color 0.2s;
+}
+
+.produtos-table tbody tr:hover {
+  background-color: #f9fafb;
+}
+
+.produtos-table td {
+  padding: 1rem;
+  font-size: 0.875rem;
+  color: #374151;
+}
+
+/* ===================================== */
+/* Coluna de Ação (3 pontos) */
+/* ===================================== */
+.action-cell {
+  position: relative;
+}
+
+.btn-action {
+  padding: 0.25rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-action:hover {
+  color: #1f2937;
+}
+
+/* Menu dropdown que aparece ao clicar nos 3 pontos */
+.action-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  z-index: 10;
+  min-width: 180px;
+  overflow: hidden;
+}
+
+.action-menu button {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: none;
+  background: white;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: #374151;
+}
+
+.action-menu button:hover {
+  background-color: #f3f4f6;
+}
+
+.action-menu button.delete {
+  color: #dc2626;
+}
+
+.action-menu button.delete:hover {
+  background-color: #fee2e2;
+}
+
+.status-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.status-badge.low {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.status-badge.out {
+  background-color: #fee2e2;
+  color: #dc2626;
+}
+
+/* ===================================== */
+/* Paginação */
+/* ===================================== */
+.pagination {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid #e5e7eb;
+  font-size: 0.875rem;
+}
+
+.pagination button {
+  padding: 0.5rem 1rem;
+  border: 1px solid #d1d5db;
+  background: white;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #374151;
+}
+
+.pagination button:hover {
+  background-color: #f3f4f6;
+}
+
+.pagination select {
+  padding: 0.5rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: white;
+}
+
+/* ===================================== */
+/* MODAIS (Popups) */
+/* ===================================== */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 2rem;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 900px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 25px rgba(0, 0, 0, 0.15);
+}
+
+.modal-content.large {
+  max-width: 1100px;
+}
+
+/* Header do modal de cadastro (verde) */
+.modal-header-produtos {
+  background-color: #10b981;
+  padding: 1.5rem 2rem;
+  border-radius: 12px 12px 0 0;
+}
+
+.modal-header-produtos h2 {
+  color: white;
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+/* Header do modal de visualização (azul escuro) */
+.modal-header-view {
+  background-color: #4b5563;
+  padding: 1.5rem 2rem;
+  border-radius: 12px 12px 0 0;
+}
+
+.modal-header-view h2 {
+  color: white;
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.modal-body {
+  padding: 2rem;
+}
+
+.form-section {
+  margin-bottom: 2rem;
+}
+
+.form-section h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-field label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 0.5rem;
+}
+
+.form-field input,
+.form-field select {
+  padding: 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 0.875rem;
+}
+
+.input-with-button {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.input-with-button input {
+  flex: 1;
+}
+
+.btn-ler-codigo {
+  padding: 0.75rem 1rem;
+  background-color: #10b981;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn-ler-codigo:hover {
+  background-color: #059669;
+}
+
+.select-with-icon {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.select-with-icon select {
+  flex: 1;
+}
+
+.btn-add-categoria {
+  width: 40px;
+  height: 40px;
+  background-color: #10b981;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1.25rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-add-categoria:hover {
+  background-color: #059669;
+}
+
+.link-adicionar {
+  font-size: 0.75rem;
+  color: #3b82f6;
+  text-decoration: none;
+  margin-top: 0.25rem;
+}
+
+.link-adicionar:hover {
+  text-decoration: underline;
+}
+
+.image-upload {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed #d1d5db;
+  border-radius: 8px;
+  padding: 2rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.image-upload:hover {
+  border-color: #10b981;
+  background-color: #f0fdf4;
+}
+
+.camera-icon {
+  color: #9ca3af;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  padding: 1.5rem 2rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.btn-cancel,
+.btn-close {
+  padding: 0.75rem 2rem;
+  background-color: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.btn-cancel:hover,
+.btn-close:hover {
+  background-color: #dc2626;
+}
+
+.btn-save {
+  padding: 0.75rem 2rem;
+  background-color: #10b981;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.btn-save:hover {
+  background-color: #059669;
+}
