@@ -7,7 +7,6 @@ const FornecedorModel = sequelize.define('Fornecedor', {
   cnpj: { type: DataTypes.STRING, unique: true },
   telefone: { type: DataTypes.STRING },
   email: { type: DataTypes.STRING, validate: { isEmail: true } },
-  endereco: { type: DataTypes.STRING },
 }, {
   tableName: 'fornecedores',
   createdAt: 'criado_em',

@@ -1,11 +1,10 @@
 class Fornecedor {
-  constructor({ id, nome, cnpj, telefone, email, endereco }) {
+  constructor({ id, nome, cnpj, telefone, email }) {
     this.id = id;
     this.nome = nome;
     this.cnpj = cnpj;
     this.telefone = telefone;
     this.email = email;
-    this.endereco = endereco;
 
     this.validar();
   }

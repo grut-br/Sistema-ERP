@@ -12,6 +12,7 @@ import { ModalNovoFabricante } from "./components/modal-novo-fabricante"
 
 import { ActionMenu } from "./components/action-menu"
 import { ModalCadastroProduto } from "./components/modal-cadastro-produto"
+import { ModalConfirmacao } from "./components/modal-confirmacao"
 
 
 export default function ProdutosPage() {
@@ -26,6 +27,11 @@ export default function ProdutosPage() {
 
   const [editingProduct, setEditingProduct] = useState<any | null>(null)
   const [activeTab, setActiveTab] = useState("itens") // 'itens' | 'compras' | 'fornecedores' | 'categorias'
+  
+  // Category Edit/Delete State
+  const [categoryToEdit, setCategoryToEdit] = useState<any | null>(null)
+  const [categoryToDelete, setCategoryToDelete] = useState<any | null>(null)
+  const [isDeletingCategory, setIsDeletingCategory] = useState(false)
   
   // Custom Action Menu State (Portal)
   const [activeActionMenu, setActiveActionMenu] = useState<{ 
@@ -49,6 +55,7 @@ export default function ProdutosPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState("")
   const [selectedFabricanteFilter, setSelectedFabricanteFilter] = useState("")
+  const [sortOption, setSortOption] = useState("id-desc") // 'id-asc', 'id-desc', 'name-asc', 'name-desc'
 
   // Form State
   const [categorias, setCategorias] = useState<any[]>([])
@@ -143,6 +150,17 @@ export default function ProdutosPage() {
         item.nome?.toLowerCase().includes(lowerTerm) || 
         item.codigoBarras?.toLowerCase().includes(lowerTerm)
       )
+    }
+
+    // Sorting (Only for Categories for now as requested)
+    if (activeTab === 'categorias') {
+      items.sort((a, b) => {
+        if (sortOption === 'id-asc') return a.id - b.id
+        if (sortOption === 'id-desc') return b.id - a.id
+        if (sortOption === 'name-asc') return a.nome.localeCompare(b.nome)
+        if (sortOption === 'name-desc') return b.nome.localeCompare(a.nome)
+        return 0
+      })
     }
 
     // Sidebar Filters (Only for Itens)
@@ -265,9 +283,50 @@ export default function ProdutosPage() {
     fetchFabricantesList()
   }
 
+  // Categoria Handlers
+  const openEditCategory = (category: any) => {
+    setCategoryToEdit(category)
+    setShowNewCategoryModal(true)
+  }
+
+  const openDeleteCategory = (category: any) => {
+    setCategoryToDelete(category)
+  }
+
+  const handleConfirmDeleteCategory = async () => {
+    if (!categoryToDelete) return
+    
+    setIsDeletingCategory(true)
+    try {
+      const response = await fetch(`/api/categorias/${categoryToDelete.id}`, {
+        method: 'DELETE'
+      })
+
+      if (!response.ok) throw new Error('Falha ao excluir categoria')
+
+      toast({
+        title: "Sucesso",
+        description: "Categoria excluída com sucesso."
+      })
+      
+      fetchCategoriasList()
+      setCategoryToDelete(null)
+
+    } catch (error) {
+      console.error(error)
+      toast({
+        title: "Erro",
+        description: "Não foi possível excluir a categoria.",
+        variant: "destructive"
+      })
+    } finally {
+      setIsDeletingCategory(false)
+    }
+  }
+
   return (
     <div className="produtos-layout">
-      {/* Sidebar lateral - componente já existente */}
+      {/* Sidebar lateral - Sempre visível */}
       <Sidebar />
 
       <div className="produtos-content">
@@ -339,7 +398,22 @@ export default function ProdutosPage() {
               </>
             )}
 
-            {(activeTab === 'categorias' || activeTab === 'compras') && (
+            {(activeTab === 'categorias') && (
+               <div className="filter-group">
+                  <label>Ordenar por</label>
+                  <select 
+                    value={sortOption}
+                    onChange={(e) => setSortOption(e.target.value)}
+                  >
+                    <option value="id-desc">ID (Decrescente)</option>
+                    <option value="id-asc">ID (Crescente)</option>
+                    <option value="name-asc">Nome (A-Z)</option>
+                    <option value="name-desc">Nome (Z-A)</option>
+                  </select>
+                </div>
+            )}
+
+            {(activeTab === 'compras') && (
                <div className="filter-search">
                   <input type="text" placeholder="Buscar..." />
                   <Search className="filter-search-icon" />
@@ -379,7 +453,10 @@ export default function ProdutosPage() {
                 </button>
               )}
               {activeTab === 'categorias' && (
-                <button className="btn-cadastrar" onClick={() => setShowNewCategoryModal(true)}>
+                <button className="btn-cadastrar" onClick={() => {
+                  setCategoryToEdit(null)
+                  setShowNewCategoryModal(true)
+                }}>
                   Nova Categoria +
                 </button>
               )}
@@ -477,19 +554,44 @@ export default function ProdutosPage() {
                 <table className="produtos-table">
                   <thead>
                     <tr>
-                      <th>ID</th>
-                      <th>Nome</th>
+                      <th className="w-[10%]">ID</th>
+                      <th className="w-[40%]">Nome</th>
+                      <th className="w-[25%]">Data Cadastro</th>
+                      <th className="w-[25%] text-center">Ações</th>
                     </tr>
                   </thead>
                   <tbody>
                     {isLoading ? (
-                      <tr><td colSpan={2} className="text-center py-8">Carregando...</td></tr>
+                      <tr><td colSpan={4} className="text-center py-8">Carregando...</td></tr>
                     ) : currentDisplayItems.length === 0 ? (
-                      <tr><td colSpan={2} className="text-center py-8">Nenhuma categoria encontrada</td></tr>
+                      <tr><td colSpan={4} className="text-center py-8">Nenhuma categoria encontrada</td></tr>
                     ) : currentDisplayItems.map((c: any) => (
                       <tr key={c.id}>
                         <td>{c.id}</td>
                         <td>{c.nome}</td>
+                        <td>
+                          {c.dataCadastro 
+                            ? new Date(c.dataCadastro).toLocaleDateString('pt-BR') 
+                            : "-"}
+                        </td>
+                        <td>
+                          <div className="flex justify-center items-center gap-2">
+                            <button 
+                              className="p-2 text-amber-500 hover:bg-amber-50 rounded-md transition-colors"
+                              title="Editar"
+                              onClick={() => openEditCategory(c)}
+                            >
+                              <Pencil size={18} />
+                            </button>
+                            <button 
+                              className="p-2 text-red-500 hover:bg-red-50 rounded-md transition-colors"
+                              title="Excluir"
+                              onClick={() => openDeleteCategory(c)}
+                            >
+                              <Trash2 size={18} />
+                            </button>
+                          </div>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -536,9 +638,19 @@ export default function ProdutosPage() {
         onClose={() => setShowNewCategoryModal(false)}
         onSuccess={() => {
            handleCategorySuccess()
-           // Se estamos na aba categorias, atualiza a lista principal também
            if (activeTab === 'categorias') fetchCategoriasList()
         }}
+        categoriaParaEditar={categoryToEdit}
+      />
+
+      <ModalConfirmacao
+        isOpen={!!categoryToDelete}
+        onClose={() => setCategoryToDelete(null)}
+        onConfirm={handleConfirmDeleteCategory}
+        titulo="Excluir Categoria"
+        mensagem={`Tem certeza que deseja excluir a categoria "${categoryToDelete?.nome}"? Esta ação não pode ser desfeita.`}
+        confirmText="Sim, excluir"
+        isLoading={isDeletingCategory}
       />
 
       {/* POPUP 4: Novo Fornecedor */}

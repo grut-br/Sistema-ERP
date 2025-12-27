@@ -10,7 +10,6 @@ const Mapper = {
     cnpj: entity.cnpj || null,
     telefone: entity.telefone || null,
     email: entity.email || null,
-    endereco: entity.endereco || null,
   }),
 };
 

@@ -4,7 +4,11 @@ const CategoriaModel = require('./categoria.model');
 const Categoria = require('../../domain/entities/categoria.entity');
 
 const CategoriaMapper = {
-  toDomain: (model) => model ? new Categoria(model) : null,
+  toDomain: (model) => model ? new Categoria({ 
+    id: model.id, 
+    nome: model.nome, 
+    dataCadastro: model.criado_em 
+  }) : null,
   toPersistence: (entity) => ({ id: entity.id, nome: entity.nome }),
 };
 

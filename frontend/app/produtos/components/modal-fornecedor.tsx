@@ -1,8 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { X } from "lucide-react"
+import { formatCNPJ, formatPhone, cleanNonDigits } from "@/utils/masks"
 import "./modal-new-categoria.css" // Reutilizando os estilos do modal de categoria para manter consistência visual
 
 interface ModalFornecedorProps {
@@ -21,6 +22,18 @@ export function ModalFornecedor({ isOpen, onClose, onSuccess }: ModalFornecedorP
   const [isLoading, setIsLoading] = useState(false)
   const { toast } = useToast()
 
+  // Reset form when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setFormData({
+        nome: "",
+        cnpj: "",
+        email: "",
+        telefone: ""
+      })
+    }
+  }, [isOpen])
+
   if (!isOpen) return null
 
   const handleSave = async () => {
@@ -35,13 +48,23 @@ export function ModalFornecedor({ isOpen, onClose, onSuccess }: ModalFornecedorP
 
     setIsLoading(true)
     try {
+      // Clean data before sending
+      const payload = {
+        ...formData,
+        cnpj: cleanNonDigits(formData.cnpj),
+        telefone: cleanNonDigits(formData.telefone)
+      }
+
       const response = await fetch('/api/fornecedores', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(payload)
       })
 
-      if (!response.ok) throw new Error('Falha ao criar fornecedor')
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Falha ao criar fornecedor')
+      }
 
       toast({
         title: "Sucesso",
@@ -91,8 +114,9 @@ export function ModalFornecedor({ isOpen, onClose, onSuccess }: ModalFornecedorP
             <input
               type="text"
               value={formData.cnpj}
-              onChange={(e) => setFormData({...formData, cnpj: e.target.value})}
+              onChange={(e) => setFormData({...formData, cnpj: formatCNPJ(e.target.value)})}
               placeholder="00.000.000/0000-00"
+              maxLength={18}
             />
           </div>
 
@@ -111,8 +135,9 @@ export function ModalFornecedor({ isOpen, onClose, onSuccess }: ModalFornecedorP
               <input
                 type="text"
                 value={formData.telefone}
-                onChange={(e) => setFormData({...formData, telefone: e.target.value})}
+                onChange={(e) => setFormData({...formData, telefone: formatPhone(e.target.value)})}
                 placeholder="(00) 00000-0000"
+                maxLength={15}
               />
             </div>
           </div>

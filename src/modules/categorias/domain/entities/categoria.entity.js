@@ -1,7 +1,8 @@
 class Categoria {
-  constructor({ id, nome }) {
+  constructor({ id, nome, dataCadastro }) {
     this.id = id;
     this.nome = nome;
+    this.dataCadastro = dataCadastro;
 
     this.validar();
   }
