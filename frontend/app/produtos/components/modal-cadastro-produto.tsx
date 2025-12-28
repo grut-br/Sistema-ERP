@@ -116,16 +116,42 @@ export const ModalCadastroProduto = ({ isOpen, onClose, onSuccess, produtoParaEd
         manterDados: false
       })
     }
+
   }, [isOpen, produtoParaEditar])
 
+  // Clear validation when changing fields
+  useEffect(() => {
+     if (validationErrors.nome && formData.nome) setValidationErrors(prev => ({ ...prev, nome: false }))
+     if (validationErrors.idCategoria && formData.idCategoria) setValidationErrors(prev => ({ ...prev, idCategoria: false }))
+     if (validationErrors.precoVenda && formData.precoVenda) setValidationErrors(prev => ({ ...prev, precoVenda: false }))
+  }, [formData.nome, formData.idCategoria, formData.precoVenda])
+
+
+  // Validation State
+  const [validationErrors, setValidationErrors] = useState({
+    nome: false,
+    idCategoria: false,
+    precoVenda: false
+  })
+
+  // ... (fetch logic remains)
 
   const handleSave = async () => {
-    try {
-      if (!formData.nome || !formData.precoVenda || !formData.idCategoria) {
-        toast({ title: "Erro", description: "Preencha os campos obrigatórios (Nome, Categoria, Preço).", variant: "destructive" })
-        return
-      }
+    // Validate Required Fields
+    const errors = {
+      nome: !formData.nome.trim(),
+      idCategoria: !formData.idCategoria,
+      precoVenda: !formData.precoVenda
+    }
 
+    setValidationErrors(errors)
+
+    if (errors.nome || errors.idCategoria || errors.precoVenda) {
+        toast({ title: "Erro", description: "Preencha os campos obrigatórios identificados em vermelho.", variant: "destructive" })
+        return
+    }
+
+    try {
       const precoVendaFormatted = String(formData.precoVenda).replace(',', '.')
 
       const payload = {
@@ -135,8 +161,8 @@ export const ModalCadastroProduto = ({ isOpen, onClose, onSuccess, produtoParaEd
         status: formData.status,
         precoVenda: Number(precoVendaFormatted),
         estoqueMinimo: Number(formData.estoqueMinimo),
-        descricao: formData.descricao, // Added
-        codigoBarras: formData.codigoBarras,
+        descricao: formData.descricao,
+        codigoBarras: formData.codigoBarras || null, // Fix: Send null if empty to avoid Unique Constraint error
       }
 
       let response;
@@ -192,7 +218,7 @@ export const ModalCadastroProduto = ({ isOpen, onClose, onSuccess, produtoParaEd
                 value={formData.nome} 
                 onChange={e => setFormData({...formData, nome: e.target.value})}
                 autoFocus
-                className="w-full"
+                className={`w-full ${validationErrors.nome ? 'border-red-500 ring-1 ring-red-500' : ''}`}
               />
             </div>
             <div className="col-span-4 form-field">
@@ -219,7 +245,7 @@ export const ModalCadastroProduto = ({ isOpen, onClose, onSuccess, produtoParaEd
                   <select 
                     value={formData.idCategoria}
                     onChange={e => setFormData({...formData, idCategoria: e.target.value})}
-                    className="flex-1"
+                    className={`flex-1 ${validationErrors.idCategoria ? 'border-red-500 ring-1 ring-red-500' : ''}`}
                   >
                     <option value="">Selecionar</option>
                     {categorias.map((c: any) => (
@@ -285,7 +311,7 @@ export const ModalCadastroProduto = ({ isOpen, onClose, onSuccess, produtoParaEd
                 placeholder="0,00"
                 value={formData.precoVenda}
                 onChange={e => setFormData({...formData, precoVenda: e.target.value})}
-                className="w-full"
+                className={`w-full ${validationErrors.precoVenda ? 'border-red-500 ring-1 ring-red-500' : ''}`}
               />
             </div>
             <div className="col-span-6 form-field">

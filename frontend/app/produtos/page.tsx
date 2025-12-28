@@ -164,6 +164,18 @@ export default function ProdutosPage() {
     }
 
     // Sorting
+    if (activeTab === 'itens') {
+      items.sort((a, b) => {
+        if (sortOption === 'name-asc') return a.nome.localeCompare(b.nome)
+        if (sortOption === 'name-desc') return b.nome.localeCompare(a.nome)
+        if (sortOption === 'preco-asc') return a.precoVenda - b.precoVenda
+        if (sortOption === 'preco-desc') return b.precoVenda - a.precoVenda
+        
+
+        return 0
+      })
+    }
+
     if (activeTab === 'categorias') {
       items.sort((a, b) => {
         if (sortOption === 'id-asc') return a.id - b.id
@@ -493,6 +505,18 @@ export default function ProdutosPage() {
                     ))}
                   </select>
                 </div>
+              <div className="filter-group">
+                  <label>Ordenar por</label>
+                  <select 
+                    value={sortOption}
+                    onChange={(e) => setSortOption(e.target.value)}
+                  >
+                    <option value="name-asc">Nome (A-Z)</option>
+                    <option value="name-desc">Nome (Z-A)</option>
+                    <option value="preco-asc">Preço (Menor - Maior)</option>
+                    <option value="preco-desc">Preço (Maior - Menor)</option>
+                  </select>
+              </div>
               </>
             )}
 
