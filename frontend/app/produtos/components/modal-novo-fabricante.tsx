@@ -1,20 +1,32 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { X } from "lucide-react"
-import "./modal-new-categoria.css" // Reusing same styles
+import "./modal-new-categoria.css"
 
 interface ModalNovoFabricanteProps {
   isOpen: boolean
   onClose: () => void
-  onSuccess: () => void
+  onSuccess: (novoFabricante?: any) => void
+  fabricanteParaEditar?: any // Support editing
 }
 
-export function ModalNovoFabricante({ isOpen, onClose, onSuccess }: ModalNovoFabricanteProps) {
+export function ModalNovoFabricante({ isOpen, onClose, onSuccess, fabricanteParaEditar }: ModalNovoFabricanteProps) {
   const [nome, setNome] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const { toast } = useToast()
+
+  // Reset or pre-fill
+  useEffect(() => {
+    if (isOpen) {
+        if (fabricanteParaEditar) {
+            setNome(fabricanteParaEditar.nome || "")
+        } else {
+            setNome("")
+        }
+    }
+  }, [isOpen, fabricanteParaEditar])
 
   if (!isOpen) return null
 
@@ -30,27 +42,38 @@ export function ModalNovoFabricante({ isOpen, onClose, onSuccess }: ModalNovoFab
 
     setIsLoading(true)
     try {
-      const response = await fetch('/api/fabricantes', {
-        method: 'POST',
+      const url = fabricanteParaEditar 
+        ? `/api/fabricantes/${fabricanteParaEditar.id}`
+        : '/api/fabricantes'
+      
+      const method = fabricanteParaEditar ? 'PUT' : 'POST'
+
+      const response = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ nome })
       })
 
-      if (!response.ok) throw new Error('Falha ao criar fabricante')
+      if (!response.ok) {
+          const data = await response.json().catch(() => ({}))
+          throw new Error(data.error || 'Falha ao salvar fabricante')
+      }
+
+      const savedData = await response.json() // Get created/updated object
 
       toast({
         title: "Sucesso",
-        description: "Fabricante criado com sucesso!"
+        description: `Fabricante ${fabricanteParaEditar ? 'atualizado' : 'criado'} com sucesso!`
       })
 
       setNome("")
-      onSuccess()
+      onSuccess(savedData) // Pass back the object
       onClose()
-    } catch (error) {
+    } catch (error: any) {
       console.error(error)
       toast({
         title: "Erro",
-        description: "Erro ao salvar fabricante.",
+        description: error.message || "Erro ao salvar fabricante.",
         variant: "destructive"
       })
     } finally {
@@ -62,7 +85,7 @@ export function ModalNovoFabricante({ isOpen, onClose, onSuccess }: ModalNovoFab
     <div className="modal-overlay">
       <div className="modal-content modal-sm">
         <div className="modal-header">
-          <h2>Novo Fabricante</h2>
+          <h2>{fabricanteParaEditar ? "Editar Fabricante" : "Novo Fabricante"}</h2>
           <button className="close-btn" onClick={onClose}>
             <X size={18} />
           </button>
@@ -81,16 +104,26 @@ export function ModalNovoFabricante({ isOpen, onClose, onSuccess }: ModalNovoFab
 
         <div className="modal-footer">
           <button
+            type="button"
             className="btn-secondary"
-            onClick={onClose}
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              onClose()
+            }}
             disabled={isLoading}
           >
             Cancelar
           </button>
 
           <button
+            type="button" // Explicitly type button to avoid form submit assumption
             className="btn-primary"
-            onClick={handleSave}
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              handleSave()
+            }}
             disabled={isLoading}
           >
             {isLoading ? "Salvando..." : "Salvar"}

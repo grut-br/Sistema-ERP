@@ -10,7 +10,6 @@ import { ModalNovaCategoria } from "./components/modal-nova-categoria"
 import { ModalFornecedor } from "./components/modal-fornecedor"
 import { ModalNovoFabricante } from "./components/modal-novo-fabricante"
 
-import { ActionMenu } from "./components/action-menu"
 import { ModalCadastroProduto } from "./components/modal-cadastro-produto"
 import { ModalConfirmacao } from "./components/modal-confirmacao"
 
@@ -32,12 +31,20 @@ export default function ProdutosPage() {
   const [categoryToEdit, setCategoryToEdit] = useState<any | null>(null)
   const [categoryToDelete, setCategoryToDelete] = useState<any | null>(null)
   const [isDeletingCategory, setIsDeletingCategory] = useState(false)
+
+  // Supplier Edit/Delete State
+  const [fornecedorToEdit, setFornecedorToEdit] = useState<any | null>(null)
+  const [supplierToDelete, setSupplierToDelete] = useState<any | null>(null)
+  const [isDeletingSupplier, setIsDeletingSupplier] = useState(false)
   
-  // Custom Action Menu State (Portal)
-  const [activeActionMenu, setActiveActionMenu] = useState<{ 
-    product: any, 
-    position: { top: number, left: number } 
-  } | null>(null)
+  // Product Delete State
+  const [productToDelete, setProductToDelete] = useState<any | null>(null)
+  const [isDeletingProduct, setIsDeletingProduct] = useState(false)
+
+  // Fabricante Edit/Delete State
+  const [fabricanteToEdit, setFabricanteToEdit] = useState<any | null>(null)
+  const [fabricanteToDelete, setFabricanteToDelete] = useState<any | null>(null)
+  const [isDeletingFabricante, setIsDeletingFabricante] = useState(false)
 
   const { toast } = useToast()
   const [isLoading, setIsLoading] = useState(true)
@@ -56,6 +63,8 @@ export default function ProdutosPage() {
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState("")
   const [selectedFabricanteFilter, setSelectedFabricanteFilter] = useState("")
   const [sortOption, setSortOption] = useState("id-desc") // 'id-asc', 'id-desc', 'name-asc', 'name-desc'
+  const [sortOptionFornecedor, setSortOptionFornecedor] = useState("id-desc") // Separate sort for Suppliers
+  const [sortOptionFabricante, setSortOptionFabricante] = useState("id-desc") // Separate sort for Manufacturers
 
   // Form State
   const [categorias, setCategorias] = useState<any[]>([])
@@ -65,6 +74,7 @@ export default function ProdutosPage() {
   useEffect(() => {
     if (activeTab === 'itens') fetchProdutos()
     if (activeTab === 'fornecedores') fetchFornecedores()
+    if (activeTab === 'fabricantes') fetchFabricantesList()
     // Always fetch dropdown data
     fetchCategoriasList() 
     fetchFabricantesList()
@@ -141,7 +151,8 @@ export default function ProdutosPage() {
   const getFilteredItems = () => {
     let items = activeTab === 'itens' ? produtos : 
                 activeTab === 'fornecedores' ? fornecedoresList :
-                activeTab === 'categorias' ? categoriasList : []
+                activeTab === 'categorias' ? categoriasList : 
+                activeTab === 'fabricantes' ? fabricantes : []
 
     // Search Bar Filter
     if (searchTerm) {
@@ -152,13 +163,49 @@ export default function ProdutosPage() {
       )
     }
 
-    // Sorting (Only for Categories for now as requested)
+    // Sorting
     if (activeTab === 'categorias') {
       items.sort((a, b) => {
         if (sortOption === 'id-asc') return a.id - b.id
         if (sortOption === 'id-desc') return b.id - a.id
         if (sortOption === 'name-asc') return a.nome.localeCompare(b.nome)
         if (sortOption === 'name-desc') return b.nome.localeCompare(a.nome)
+        return 0
+      })
+    }
+
+    if (activeTab === 'fornecedores') {
+      if (searchTerm) {
+        const lowerTerm = searchTerm.toLowerCase()
+        // Sanitized search for CNPJ (remove dots, dashes, slashes for comparison)
+        const cleanSearch = lowerTerm.replace(/[^0-9a-z]/g, "")
+        
+        items = items.filter(f => {
+            const cleanCnpj = (f.cnpj || "").replace(/[^0-9a-z]/g, "") // Sanitize stored CNPJ
+            return f.nome?.toLowerCase().includes(lowerTerm) || cleanCnpj.includes(cleanSearch)
+        })
+      }
+
+      items.sort((a, b) => {
+        if (sortOptionFornecedor === 'id-asc') return a.id - b.id
+        if (sortOptionFornecedor === 'id-desc') return b.id - a.id
+        if (sortOptionFornecedor === 'name-asc') return a.nome.localeCompare(b.nome)
+        if (sortOptionFornecedor === 'name-desc') return b.nome.localeCompare(a.nome)
+        return 0
+      })
+    }
+
+    if (activeTab === 'fabricantes') {
+      if (searchTerm) {
+        const lowerTerm = searchTerm.toLowerCase()
+        items = items.filter(f => f.nome?.toLowerCase().includes(lowerTerm))
+      }
+
+      items.sort((a, b) => {
+        if (sortOptionFabricante === 'id-asc') return a.id - b.id
+        if (sortOptionFabricante === 'id-desc') return b.id - a.id
+        if (sortOptionFabricante === 'name-asc') return a.nome.localeCompare(b.nome)
+        if (sortOptionFabricante === 'name-desc') return b.nome.localeCompare(a.nome)
         return 0
       })
     }
@@ -199,11 +246,13 @@ export default function ProdutosPage() {
     setCurrentPage(1)
   }
 
+  //Ordem dos botões das tabs/abas
   const tabs = [
     { id: "itens", label: "Itens" },
     { id: "compras", label: "Compras" },
-    { id: "fornecedores", label: "Fornecedores" },
     { id: "categorias", label: "Categorias" },
+    { id: "fabricantes", label: "Fabricantes" },
+    { id: "fornecedores", label: "Fornecedores" },
   ]
 
   // Helpers
@@ -216,58 +265,52 @@ export default function ProdutosPage() {
     }).format(numValue)
   }
 
-  const getProductStatus = (estoque: number) => {
-    if (estoque === 0) return { label: "Fora de estoque", className: "status-badge out" }
-    if (estoque <= 5) return { label: "Baixo estoque", className: "status-badge low" }
-    return null
-  }
-
-  const openActionMenu = (e: React.MouseEvent, product: any) => {
-    e.stopPropagation()
-    const rect = e.currentTarget.getBoundingClientRect()
-    // Calculate position: right aligned if close to edge, or left aligned
-    // Simple approach: left aligned to button, slightly below
-    setActiveActionMenu({
-      product,
-      position: {
-        top: rect.bottom + 5,
-        left: rect.left
-      }
-    })
+  // Função para retornar o status do produto
+  const getProductStatus = (estoque: number, status: string, estoqueMinimo: number = 5) => {
+    if (status === 'INATIVO') return { label: "Inativo", className: "status-badge inactive" }
+    if (estoque <= 0) return { label: "Esgotado", className: "status-badge out" }
+    if (estoque <= estoqueMinimo) return { label: "Baixo estoque", className: "status-badge low" }
+    return { label: "Em estoque", className: "status-badge active" }
   }
 
   // Função para excluir um produto
-  const handleDelete = async (id: number) => {
-    if (confirm("Tem certeza que deseja excluir este produto?")) {
-      try {
-        const response = await fetch(`/api/produtos/${id}`, {
-          method: 'DELETE'
-        })
-        
-        if (!response.ok) throw new Error('Falha ao excluir produto')
+  const openDeleteProduct = (product: any) => {
+    setProductToDelete(product)
+  }
 
-        setProdutos(produtos.filter(p => p.id !== id))
-        setActiveActionMenu(null)
-        toast({
-          title: "Sucesso",
-          description: "Produto excluído com sucesso."
-        })
-      } catch (error) {
-        console.error('Erro ao excluir produto:', error)
-        toast({
-          title: "Erro",
-          description: "Não foi possível excluir o produto.",
-          variant: "destructive"
-        })
-      }
+  const handleConfirmDeleteProduct = async () => {
+    if (!productToDelete) return
+    
+    setIsDeletingProduct(true)
+    try {
+      const response = await fetch(`/api/produtos/${productToDelete.id}`, {
+        method: 'DELETE'
+      })
+      
+      if (!response.ok) throw new Error('Falha ao excluir produto')
+
+      setProdutos(produtos.filter(p => p.id !== productToDelete.id))
+      toast({
+        title: "Sucesso",
+        description: "Produto excluído com sucesso."
+      })
+      setProductToDelete(null)
+    } catch (error) {
+      console.error('Erro ao excluir produto:', error)
+      toast({
+        title: "Erro",
+        description: "Não foi possível excluir o produto.",
+        variant: "destructive"
+      })
+    } finally {
+        setIsDeletingProduct(false)
     }
   }
 
-  // Função para abrir o popup de visualização/edição quando clicar nos 3 pontos
+  // Função para abrir o popup de visualização/edição
   const handleViewProduct = (product: any) => {
     setEditingProduct(product)
     setShowAddModal(true)
-    setActiveActionMenu(null)
   }
 
   const handleProductSuccess = () => {
@@ -324,6 +367,74 @@ export default function ProdutosPage() {
     }
   }
 
+  // Fornecedor Handlers
+  const openEditFornecedor = (fornecedor: any) => {
+    setFornecedorToEdit(fornecedor)
+    setShowNewFornecedorModal(true)
+  }
+
+  const openDeleteFornecedor = (fornecedor: any) => {
+    setSupplierToDelete(fornecedor)
+  }
+
+  const handleConfirmDeleteSupplier = async () => {
+    if (!supplierToDelete) return
+    setIsDeletingSupplier(true)
+    try {
+        const response = await fetch(`/api/fornecedores/${supplierToDelete.id}`, {
+            method: 'DELETE'
+        })
+        if (!response.ok) throw new Error('Falha ao excluir fornecedor')
+        
+        toast({ title: "Sucesso", description: "Fornecedor excluído com sucesso." })
+        fetchFornecedores()
+        setSupplierToDelete(null)
+    } catch (e: any) {
+        console.error(e)
+        toast({ title: "Erro", description: e.message || "Erro ao excluir", variant: "destructive" })
+    } finally {
+        setIsDeletingSupplier(false)
+    }
+  }
+
+  // Fabricante Handlers
+  const openEditFabricante = (fabricante: any) => {
+    setFabricanteToEdit(fabricante)
+    setShowNewFabricanteModal(true)
+  }
+
+  const openDeleteFabricante = (fabricante: any) => {
+    setFabricanteToDelete(fabricante)
+  }
+
+  const handleConfirmDeleteFabricante = async () => {
+    if (!fabricanteToDelete) return
+    setIsDeletingFabricante(true)
+    try {
+        const response = await fetch(`/api/fabricantes/${fabricanteToDelete.id}`, {
+            method: 'DELETE'
+        })
+        if (!response.ok) {
+            const data = await response.json().catch(() => ({}))
+            throw new Error(data.error || 'Falha ao excluir fabricante')
+        }
+        
+        toast({ title: "Sucesso", description: "Fabricante excluído com sucesso." })
+        fetchFabricantesList()
+        setFabricanteToDelete(null)
+    } catch (e: any) {
+        console.error(e)
+        // If error message mentions association, user friendly message
+        const msg = e.message.includes("produtos associados") 
+            ? "Este fabricante não pode ser excluído pois possui produtos associados."
+            : (e.message || "Erro ao excluir");
+            
+        toast({ title: "Erro", description: msg, variant: "destructive" })
+    } finally {
+        setIsDeletingFabricante(false)
+    }
+  }
+
   return (
     <div className="produtos-layout">
       {/* Sidebar lateral - Sempre visível */}
@@ -337,7 +448,7 @@ export default function ProdutosPage() {
             {/* Header Input agora é a busca principal */}
             <input 
               type="text" 
-              placeholder="Procure por nome" 
+              placeholder={activeTab === 'fornecedores' ? "Buscar por Nome ou CNPJ" : "Procure por nome"} 
               value={searchTerm}
               onChange={(e) => {
                 setSearchTerm(e.target.value)
@@ -386,16 +497,18 @@ export default function ProdutosPage() {
             )}
 
             {activeTab === 'fornecedores' && (
-              <>
-                 <div className="filter-search">
-                  <input type="text" placeholder="Buscar por Nome" />
-                  <Search className="filter-search-icon" />
-                </div>
-                 <div className="filter-search" style={{ marginTop: 10 }}>
-                  <input type="text" placeholder="Buscar por CNPJ" />
-                  <Search className="filter-search-icon" />
-                </div>
-              </>
+              <div className="filter-group">
+                  <label>Ordenar por</label>
+                  <select 
+                    value={sortOptionFornecedor}
+                    onChange={(e) => setSortOptionFornecedor(e.target.value)}
+                  >
+                    <option value="name-asc">Nome (A-Z)</option>
+                    <option value="name-desc">Nome (Z-A)</option>
+                    <option value="id-desc">ID (Decrescente)</option>
+                    <option value="id-asc">ID (Crescente)</option>
+                  </select>
+              </div>
             )}
 
             {(activeTab === 'categorias') && (
@@ -405,10 +518,25 @@ export default function ProdutosPage() {
                     value={sortOption}
                     onChange={(e) => setSortOption(e.target.value)}
                   >
-                    <option value="id-desc">ID (Decrescente)</option>
-                    <option value="id-asc">ID (Crescente)</option>
                     <option value="name-asc">Nome (A-Z)</option>
                     <option value="name-desc">Nome (Z-A)</option>
+                    <option value="id-desc">ID (Decrescente)</option>
+                    <option value="id-asc">ID (Crescente)</option>
+                  </select>
+                </div>
+            )}
+
+            {(activeTab === 'fabricantes') && (
+               <div className="filter-group">
+                  <label>Ordenar por</label>
+                  <select 
+                    value={sortOptionFabricante}
+                    onChange={(e) => setSortOptionFabricante(e.target.value)}
+                  >
+                    <option value="name-asc">Nome (A-Z)</option>
+                    <option value="name-desc">Nome (Z-A)</option>
+                    <option value="id-desc">ID (Decrescente)</option>
+                    <option value="id-asc">ID (Crescente)</option>
                   </select>
                 </div>
             )}
@@ -448,7 +576,10 @@ export default function ProdutosPage() {
                 </button>
               )}
               {activeTab === 'fornecedores' && (
-                <button className="btn-cadastrar" onClick={() => setShowNewFornecedorModal(true)}>
+                <button className="btn-cadastrar" onClick={() => {
+                  setFornecedorToEdit(null)
+                  setShowNewFornecedorModal(true)
+                }}>
                   Novo Fornecedor +
                 </button>
               )}
@@ -465,6 +596,14 @@ export default function ProdutosPage() {
                   Nova Entrada +
                 </button>
               )}
+               {activeTab === 'fabricantes' && (
+                <button className="btn-cadastrar" onClick={() => {
+                    setFabricanteToEdit(null)
+                    setShowNewFabricanteModal(true)
+                }}>
+                  Novo Fabricante +
+                </button>
+              )}
             </div>
 
             {/* Tabela Dinâmica */}
@@ -475,14 +614,14 @@ export default function ProdutosPage() {
                 <table className="produtos-table">
                   <thead>
                     <tr>
-                      <th className="w-[5%]">Ação</th>
-                      <th className="w-[30%]">Nome</th>
-                      <th className="w-[15%]">Categoria</th>
-                      <th className="w-[10%]">Preço</th>
-                      <th className="w-[10%]">Código</th>
-                      <th className="w-[8%] text-center">Estoque</th>
-                      <th className="w-[10%] text-center">Status</th>
-                      <th className="w-[12%]">Fabricante</th>
+                      <th className="w-[10%] text-center whitespace-nowrap">Ação</th>
+                      <th className="w-[30%] whitespace-nowrap">Nome</th>
+                      <th className="w-[15%] whitespace-nowrap">Categoria</th>
+                      <th className="w-[10%] whitespace-nowrap">Preço</th>
+                      <th className="w-[8%] whitespace-nowrap">Estoque</th>
+                      <th className="w-[10%] whitespace-nowrap">Status</th>
+                      <th className="w-[12%] whitespace-nowrap">Fabricante</th>
+                      <th className="w-[10%] whitespace-nowrap">Código</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -491,28 +630,36 @@ export default function ProdutosPage() {
                     ) : currentDisplayItems.length === 0 ? (
                       <tr><td colSpan={8} className="text-center py-8">Nenhum produto encontrado</td></tr>
                     ) : currentDisplayItems.map((produto) => {
-                      const status = getProductStatus(produto.estoque || 0)
+                      const status = getProductStatus(produto.estoque || 0, produto.status || 'ATIVO', produto.estoqueMinimo || 5)
                       return (
                       <tr key={produto.id}>
                         <td>
-                          <div className="action-cell">
-                            <button
-                              className="btn-action"
-                              onClick={(e) => openActionMenu(e, produto)}
-                            >
-                              <MoreVertical size={18} />
-                            </button>
+                          <div className="flex justify-center items-center gap-2">
+                             <button
+                              className="p-2 text-amber-500 hover:bg-amber-50 rounded-md transition-colors"
+                              title="Editar"
+                              onClick={() => handleViewProduct(produto)}
+                             >
+                               <Pencil size={18} />
+                             </button>
+                             <button 
+                              className="p-2 text-red-500 hover:bg-red-50 rounded-md transition-colors"
+                              title="Excluir"
+                              onClick={() => openDeleteProduct(produto)}
+                             >
+                               <Trash2 size={18} />
+                             </button>
                           </div>
                         </td>
-                        <td>{produto.nome}</td>
-                        <td>{produto.categoria?.nome || produto.categoria || "Sem Categoria"}</td>
-                        <td>{formatCurrency(produto.precoVenda || produto.preco)}</td>
-                        <td>{produto.codigoBarras || produto.codigo}</td>
-                        <td>{produto.estoque || 0}</td>
-                        <td>
+                        <td className="whitespace-nowrap">{produto.nome}</td>
+                        <td className="whitespace-nowrap">{produto.categoria?.nome || produto.categoria || "Sem Categoria"}</td>
+                        <td className="whitespace-nowrap">{formatCurrency(produto.precoVenda || produto.preco)}</td>
+                        <td className="whitespace-nowrap">{produto.estoque || 0}</td>
+                        <td className="whitespace-nowrap">
                           {status && <span className={status.className}>{status.label}</span>}
                         </td>
-                        <td>{produto.fabricante?.nome || "-"}</td>
+                        <td className="whitespace-nowrap">{produto.fabricante?.nome || "-"}</td>
+                        <td className="whitespace-nowrap">{produto.codigoBarras || produto.codigo}</td>
                       </tr>
                     )})}
                   </tbody>
@@ -524,25 +671,44 @@ export default function ProdutosPage() {
                 <table className="produtos-table">
                   <thead>
                     <tr>
-                      <th>ID</th>
-                      <th>Nome</th>
-                      <th>CNPJ</th>
-                      <th>Email</th>
-                      <th>Telefone</th>
+                      <th className="text-center whitespace-nowrap">Ações</th>
+                      <th className="whitespace-nowrap">ID</th>
+                      <th className="whitespace-nowrap">Nome</th>
+                      <th className="whitespace-nowrap">CNPJ</th>
+                      <th className="whitespace-nowrap">Email</th>
+                      <th className="whitespace-nowrap">Telefone</th>
                     </tr>
                   </thead>
                   <tbody>
                     {isLoading ? (
-                      <tr><td colSpan={5} className="text-center py-8">Carregando...</td></tr>
+                      <tr><td colSpan={6} className="text-center py-8">Carregando...</td></tr>
                     ) : currentDisplayItems.length === 0 ? (
-                      <tr><td colSpan={5} className="text-center py-8">Nenhum fornecedor encontrado</td></tr>
+                      <tr><td colSpan={6} className="text-center py-8">Nenhum fornecedor encontrado</td></tr>
                     ) : currentDisplayItems.map((f: any) => (
                       <tr key={f.id}>
-                        <td>{f.id}</td>
-                        <td>{f.nome}</td>
-                        <td>{f.cnpj || "-"}</td>
-                        <td>{f.email || "-"}</td>
-                        <td>{f.telefone || "-"}</td>
+                        <td>
+                            <div className="flex justify-center items-center gap-2">
+                            <button 
+                              className="p-2 text-amber-500 hover:bg-amber-50 rounded-md transition-colors"
+                              title="Editar"
+                              onClick={() => openEditFornecedor(f)}
+                            >
+                              <Pencil size={18} />
+                            </button>
+                            <button 
+                              className="p-2 text-red-500 hover:bg-red-50 rounded-md transition-colors"
+                              title="Excluir"
+                              onClick={() => openDeleteFornecedor(f)}
+                            >
+                              <Trash2 size={18} />
+                            </button>
+                          </div>
+                        </td>
+                        <td className="whitespace-nowrap">{f.id}</td>
+                        <td className="whitespace-nowrap">{f.nome}</td>
+                        <td className="whitespace-nowrap">{f.cnpj || "-"}</td>
+                        <td className="whitespace-nowrap">{f.email || "-"}</td>
+                        <td className="whitespace-nowrap">{f.telefone || "-"}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -554,10 +720,10 @@ export default function ProdutosPage() {
                 <table className="produtos-table">
                   <thead>
                     <tr>
-                      <th className="w-[10%]">ID</th>
-                      <th className="w-[40%]">Nome</th>
-                      <th className="w-[25%]">Data Cadastro</th>
-                      <th className="w-[25%] text-center">Ações</th>
+                      <th className="w-[15%] text-center whitespace-nowrap">Ações</th>
+                      <th className="w-[40%] whitespace-nowrap">Nome</th>
+                      <th className="w-[10%] whitespace-nowrap">ID</th>
+                      <th className="w-[35%] whitespace-nowrap">Data Cadastro</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -567,13 +733,6 @@ export default function ProdutosPage() {
                       <tr><td colSpan={4} className="text-center py-8">Nenhuma categoria encontrada</td></tr>
                     ) : currentDisplayItems.map((c: any) => (
                       <tr key={c.id}>
-                        <td>{c.id}</td>
-                        <td>{c.nome}</td>
-                        <td>
-                          {c.dataCadastro 
-                            ? new Date(c.dataCadastro).toLocaleDateString('pt-BR') 
-                            : "-"}
-                        </td>
                         <td>
                           <div className="flex justify-center items-center gap-2">
                             <button 
@@ -591,6 +750,62 @@ export default function ProdutosPage() {
                               <Trash2 size={18} />
                             </button>
                           </div>
+                        </td>
+                        <td className="whitespace-nowrap">{c.nome}</td>
+                        <td className="whitespace-nowrap">{c.id}</td>
+                        <td className="whitespace-nowrap">
+                          {c.dataCadastro 
+                            ? new Date(c.dataCadastro).toLocaleDateString('pt-BR') 
+                            : "-"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+
+              {/* TABELA FABRICANTES */}
+              {activeTab === 'fabricantes' && (
+                <table className="produtos-table">
+                  <thead>
+                    <tr>
+                      <th className="w-[15%] text-center whitespace-nowrap">Ações</th>
+                      <th className="w-[45%] whitespace-nowrap">Nome</th>
+                      <th className="w-[10%] whitespace-nowrap">ID</th>
+                      <th className="w-[30%] whitespace-nowrap">Data Cadastro</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {isLoading ? (
+                      <tr><td colSpan={3} className="text-center py-8">Carregando...</td></tr>
+                    ) : currentDisplayItems.length === 0 ? (
+                      <tr><td colSpan={3} className="text-center py-8">Nenhum fabricante encontrado</td></tr>
+                    ) : currentDisplayItems.map((f: any) => (
+                      <tr key={f.id}>
+                        <td>
+                          <div className="flex justify-center items-center gap-2">
+                            <button 
+                              className="p-2 text-amber-500 hover:bg-amber-50 rounded-md transition-colors"
+                              title="Editar"
+                              onClick={() => openEditFabricante(f)}
+                            >
+                              <Pencil size={18} />
+                            </button>
+                            <button 
+                              className="p-2 text-red-500 hover:bg-red-50 rounded-md transition-colors"
+                              title="Excluir"
+                              onClick={() => openDeleteFabricante(f)}
+                            >
+                              <Trash2 size={18} />
+                            </button>
+                          </div>
+                        </td>
+                        <td className="whitespace-nowrap">{f.nome}</td>
+                        <td className="whitespace-nowrap">{f.id}</td>
+                        <td className="whitespace-nowrap">
+                          {f.dataCadastro 
+                            ? new Date(f.dataCadastro).toLocaleDateString('pt-BR') 
+                            : "-"}
                         </td>
                       </tr>
                     ))}
@@ -660,21 +875,49 @@ export default function ProdutosPage() {
         onSuccess={() => {
           if (activeTab === 'fornecedores') fetchFornecedores()
         }}
+        fornecedorParaEditar={fornecedorToEdit}
+      />
+      
+      <ModalConfirmacao
+        isOpen={!!supplierToDelete}
+        onClose={() => setSupplierToDelete(null)}
+        onConfirm={handleConfirmDeleteSupplier}
+        titulo="Excluir Fornecedor"
+        mensagem={`Tem certeza que deseja excluir o fornecedor "${supplierToDelete?.nome}"?`}
+        confirmText="Excluir"
+        variant="danger"
+        isLoading={isDeletingSupplier}
+      />
+
+       <ModalConfirmacao
+        isOpen={!!productToDelete}
+        onClose={() => setProductToDelete(null)}
+        onConfirm={handleConfirmDeleteProduct}
+        titulo="Excluir Produto"
+        mensagem={`Tem certeza que deseja excluir o produto "${productToDelete?.nome}"?`}
+        confirmText="Excluir"
+        variant="danger"
+        isLoading={isDeletingProduct}
       />
 
       <ModalNovoFabricante
         isOpen={showNewFabricanteModal}
         onClose={() => setShowNewFabricanteModal(false)}
         onSuccess={handleFabricanteSuccess}
+        fabricanteParaEditar={fabricanteToEdit}
+      />
+      
+      <ModalConfirmacao
+        isOpen={!!fabricanteToDelete}
+        onClose={() => setFabricanteToDelete(null)}
+        onConfirm={handleConfirmDeleteFabricante}
+        titulo="Excluir Fabricante"
+        mensagem={`Tem certeza que deseja excluir o fabricante "${fabricanteToDelete?.nome}"?`}
+        confirmText="Excluir"
+        variant="danger"
+        isLoading={isDeletingFabricante}
       />
 
-      <ActionMenu 
-        isOpen={!!activeActionMenu}
-        position={activeActionMenu?.position || { top: 0, left: 0 }}
-        onClose={() => setActiveActionMenu(null)}
-        onEdit={() => activeActionMenu && handleViewProduct(activeActionMenu.product)}
-        onDelete={() => activeActionMenu && handleDelete(activeActionMenu.product.id)}
-      />
     </div>
   )
 }

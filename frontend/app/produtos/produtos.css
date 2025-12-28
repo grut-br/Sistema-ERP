@@ -12,6 +12,7 @@
   margin-left: 190px;
   padding: 2rem;
   transition: margin-left 0.3s ease;
+  min-width: 0; /* IMPEDE que o container principal cresça com tabelas largas, forçando scroll interno */
 }
 
 .produtos-content.full-width {
@@ -167,6 +168,7 @@
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  min-width: 0; /* IMPEDE que o flex item cresça além da tela, forçando o scroll interno */
 }
 
 /* ===================================== */
@@ -222,6 +224,8 @@
 /* ===================================== */
 .table-wrapper {
   overflow-x: auto;
+  width: 100%;
+  max-width: 100%; /* Garante que o wrapper não exceda o container pai */
 }
 
 .produtos-table {
@@ -236,9 +240,9 @@
 
 .produtos-table th {
   padding: 1rem;
-  text-align: left;
-  font-weight: 600;
-  font-size: 0.875rem;
+  text-align: center; /* CENTRALIZADO conforme solicitado */
+  font-weight: 800;
+  font-size: 1 rem;
   color: white;
   white-space: nowrap;
 }
@@ -256,70 +260,12 @@
   padding: 1rem;
   font-size: 0.875rem;
   color: #374151;
+  text-align: center;
 }
 
 /* ===================================== */
-/* Coluna de Ação (3 pontos) */
+/* Status Badge */
 /* ===================================== */
-.action-cell {
-  position: relative;
-}
-
-.btn-action {
-  padding: 0.25rem;
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: #6b7280;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.btn-action:hover {
-  color: #1f2937;
-}
-
-/* Menu dropdown que aparece ao clicar nos 3 pontos */
-.action-menu {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  background: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  z-index: 10;
-  min-width: 180px;
-  overflow: hidden;
-}
-
-.action-menu button {
-  width: 100%;
-  padding: 0.75rem 1rem;
-  border: none;
-  background: white;
-  text-align: left;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.875rem;
-  color: #374151;
-}
-
-.action-menu button:hover {
-  background-color: #f3f4f6;
-}
-
-.action-menu button.delete {
-  color: #dc2626;
-}
-
-.action-menu button.delete:hover {
-  background-color: #fee2e2;
-}
-
 .status-badge {
   padding: 0.25rem 0.75rem;
   border-radius: 12px;
@@ -335,6 +281,16 @@
 .status-badge.out {
   background-color: #fee2e2;
   color: #dc2626;
+}
+
+.status-badge.active {
+  background-color: #d1fae5;
+  color: #047857;
+}
+
+.status-badge.inactive {
+  background-color: #f3f4f6;
+  color: #374151;
 }
 
 /* ===================================== */

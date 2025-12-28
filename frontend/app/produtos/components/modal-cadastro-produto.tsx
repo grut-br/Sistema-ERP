@@ -29,6 +29,7 @@ export const ModalCadastroProduto = ({ isOpen, onClose, onSuccess, produtoParaEd
     status: "ATIVO",
     precoVenda: "",
     estoqueMinimo: "",
+    descricao: "", // Added
     codigoBarras: "",
     manterDados: false
   })
@@ -52,10 +53,28 @@ export const ModalCadastroProduto = ({ isOpen, onClose, onSuccess, produtoParaEd
     }
   }
 
+  // Handlers for Quick Add Success (Auto-Select)
+  const handleSuccessCategoria = (novaCategoria?: any) => {
+      fetchCategorias()
+      if (novaCategoria && novaCategoria.id) {
+          setFormData(prev => ({ ...prev, idCategoria: novaCategoria.id }))
+      }
+  }
+
+  const handleSuccessFabricante = (novoFabricante?: any) => {
+      fetchFabricantes()
+      if (novoFabricante && novoFabricante.id) {
+          setFormData(prev => ({ ...prev, idFabricante: novoFabricante.id }))
+      }
+  }
+
   useEffect(() => {
     if (isOpen) {
       fetchCategorias()
       fetchFabricantes()
+      // Reset child modals to ensure they don't open automatically ("Ghost Modal" fix)
+      setShowNewCategoryModal(false)
+      setShowNewFabricanteModal(false)
     }
   }, [isOpen])
 
@@ -68,8 +87,9 @@ export const ModalCadastroProduto = ({ isOpen, onClose, onSuccess, produtoParaEd
         idCategoria: p.idCategoria || p.categoria?.id || "",
         idFabricante: p.idFabricante || p.fabricante?.id || "",
         status: p.status || "ATIVO",
-        precoVenda: p.precoVenda ? String(p.precoVenda).replace('.', ',') : "",
+        precoVenda: p.precoVenda !== undefined ? String(p.precoVenda).replace('.', ',') : (p.preco !== undefined ? String(p.preco).replace('.', ',') : ""),
         estoqueMinimo: p.estoqueMinimo ? String(p.estoqueMinimo) : "",
+        descricao: p.descricao || "", 
         codigoBarras: p.codigoBarras || "",
         manterDados: false
       })
@@ -91,6 +111,7 @@ export const ModalCadastroProduto = ({ isOpen, onClose, onSuccess, produtoParaEd
         status: "ATIVO",
         precoVenda: "",
         estoqueMinimo: "",
+        descricao: "", // Added
         codigoBarras: "",
         manterDados: false
       })
@@ -105,13 +126,16 @@ export const ModalCadastroProduto = ({ isOpen, onClose, onSuccess, produtoParaEd
         return
       }
 
+      const precoVendaFormatted = String(formData.precoVenda).replace(',', '.')
+
       const payload = {
         nome: formData.nome,
         idCategoria: Number(formData.idCategoria),
-        idFabricante: Number(formData.idFabricante),
+        idFabricante: formData.idFabricante ? Number(formData.idFabricante) : null,
         status: formData.status,
-        precoVenda: Number(formData.precoVenda.replace(',', '.')),
+        precoVenda: Number(precoVendaFormatted),
         estoqueMinimo: Number(formData.estoqueMinimo),
+        descricao: formData.descricao, // Added
         codigoBarras: formData.codigoBarras,
       }
 
@@ -273,6 +297,15 @@ export const ModalCadastroProduto = ({ isOpen, onClose, onSuccess, produtoParaEd
                 className="w-full"
               />
             </div>
+            <div className="col-span-12 form-field">
+              <label>Descrição</label>
+              <textarea 
+                value={formData.descricao}
+                onChange={e => setFormData({...formData, descricao: e.target.value})}
+                className="w-full p-2 border border-gray-300 rounded-md"
+                rows={3}
+              />
+          </div>
           </div>
         </div>
 
@@ -305,13 +338,13 @@ export const ModalCadastroProduto = ({ isOpen, onClose, onSuccess, produtoParaEd
       <ModalNovaCategoria 
         isOpen={showNewCategoryModal}
         onClose={() => setShowNewCategoryModal(false)}
-        onSuccess={fetchCategorias}
+        onSuccess={handleSuccessCategoria}
       />
 
        <ModalNovoFabricante
         isOpen={showNewFabricanteModal}
         onClose={() => setShowNewFabricanteModal(false)}
-        onSuccess={fetchFabricantes}
+        onSuccess={handleSuccessFabricante}
       />
     </div>
   )

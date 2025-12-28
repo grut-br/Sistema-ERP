@@ -4,15 +4,16 @@ import { useState, useEffect } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { X } from "lucide-react"
 import { formatCNPJ, formatPhone, cleanNonDigits } from "@/utils/masks"
-import "./modal-new-categoria.css" // Reutilizando os estilos do modal de categoria para manter consistência visual
+import "./modal-new-categoria.css"
 
 interface ModalFornecedorProps {
   isOpen: boolean
   onClose: () => void
   onSuccess: () => void
+  fornecedorParaEditar?: any // Optional prop for editing
 }
 
-export function ModalFornecedor({ isOpen, onClose, onSuccess }: ModalFornecedorProps) {
+export function ModalFornecedor({ isOpen, onClose, onSuccess, fornecedorParaEditar }: ModalFornecedorProps) {
   const [formData, setFormData] = useState({
     nome: "",
     cnpj: "",
@@ -22,17 +23,26 @@ export function ModalFornecedor({ isOpen, onClose, onSuccess }: ModalFornecedorP
   const [isLoading, setIsLoading] = useState(false)
   const { toast } = useToast()
 
-  // Reset form when modal opens
+  // Reset or Pre-fill form when modal opens
   useEffect(() => {
     if (isOpen) {
-      setFormData({
-        nome: "",
-        cnpj: "",
-        email: "",
-        telefone: ""
-      })
+      if (fornecedorParaEditar) {
+        setFormData({
+          nome: fornecedorParaEditar.nome || "",
+          cnpj: formatCNPJ(fornecedorParaEditar.cnpj || ""),
+          email: fornecedorParaEditar.email || "",
+          telefone: formatPhone(fornecedorParaEditar.telefone || "")
+        })
+      } else {
+        setFormData({
+            nome: "",
+            cnpj: "",
+            email: "",
+            telefone: ""
+        })
+      }
     }
-  }, [isOpen])
+  }, [isOpen, fornecedorParaEditar])
 
   if (!isOpen) return null
 
@@ -55,30 +65,36 @@ export function ModalFornecedor({ isOpen, onClose, onSuccess }: ModalFornecedorP
         telefone: cleanNonDigits(formData.telefone)
       }
 
-      const response = await fetch('/api/fornecedores', {
-        method: 'POST',
+      const url = fornecedorParaEditar 
+        ? `/api/fornecedores/${fornecedorParaEditar.id}`
+        : '/api/fornecedores'
+      
+      const method = fornecedorParaEditar ? 'PUT' : 'POST'
+
+      const response = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       })
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.error || 'Falha ao criar fornecedor')
+        throw new Error(errorData.error || 'Falha ao salvar fornecedor')
       }
 
       toast({
         title: "Sucesso",
-        description: "Fornecedor criado com sucesso!"
+        description: `Fornecedor ${fornecedorParaEditar ? 'atualizado' : 'criado'} com sucesso!`
       })
 
       setFormData({ nome: "", cnpj: "", email: "", telefone: "" })
       onSuccess()
       onClose()
-    } catch (error) {
+    } catch (error: any) {
       console.error(error)
       toast({
         title: "Erro",
-        description: "Erro ao salvar fornecedor.",
+        description: error.message || "Erro ao salvar fornecedor.",
         variant: "destructive"
       })
     } finally {
@@ -88,10 +104,10 @@ export function ModalFornecedor({ isOpen, onClose, onSuccess }: ModalFornecedorP
 
   return (
     <div className="modal-overlay">
-      <div className="modal-content modal-md" style={{ maxWidth: '500px' }}> {/* Um pouco mais largo que o de categoria */}
+      <div className="modal-content modal-md" style={{ maxWidth: '500px' }}>
         
         <div className="modal-header">
-          <h2>Novo Fornecedor</h2>
+          <h2>{fornecedorParaEditar ? "Editar Fornecedor" : "Novo Fornecedor"}</h2>
           <button className="close-btn" onClick={onClose}>
             <X size={18} />
           </button>

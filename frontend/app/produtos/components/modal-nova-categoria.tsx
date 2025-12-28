@@ -8,7 +8,7 @@ import "./modal-new-categoria.css"
 interface ModalNovaCategoriaProps {
   isOpen: boolean
   onClose: () => void
-  onSuccess: () => void
+  onSuccess: (novaCategoria?: any) => void
   categoriaParaEditar?: { id: number, nome: string } | null
 }
 
@@ -79,13 +79,15 @@ export function ModalNovaCategoria({ isOpen, onClose, onSuccess, categoriaParaEd
 
       if (!response.ok) throw new Error('Falha ao salvar categoria')
 
+      const savedData = await response.json()
+
       toast({
         title: "Sucesso",
         description: categoriaParaEditar ? "Categoria atualizada!" : "Categoria criada!"
       })
 
       setNome("") 
-      onSuccess() 
+      onSuccess(savedData) 
       onClose() 
     } catch (error) {
       console.error(error)
@@ -126,16 +128,26 @@ export function ModalNovaCategoria({ isOpen, onClose, onSuccess, categoriaParaEd
         {/* FOOTER */}
         <div className="modal-footer">
           <button
+            type="button"
             className="btn-secondary"
-            onClick={onClose}
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              onClose()
+            }}
             disabled={isLoading}
           >
             Cancelar
           </button>
 
           <button
+            type="button"
             className="btn-primary"
-            onClick={handleSave}
+            onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                handleSave()
+            }}
             disabled={isLoading}
           >
             {isLoading ? "Salvando..." : "Salvar"}

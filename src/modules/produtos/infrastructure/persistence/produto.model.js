@@ -55,7 +55,7 @@ const ProdutoModel = sequelize.define('Produto', {
   },
 
   status: { 
-    type: DataTypes.ENUM('ATIVO', 'INATIVO', 'SEM_ESTOQUE'), 
+    type: DataTypes.ENUM('ATIVO', 'INATIVO'), 
     defaultValue: 'ATIVO' 
   },
   estoqueMinimo: {
