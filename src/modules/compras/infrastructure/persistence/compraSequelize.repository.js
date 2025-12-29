@@ -1,7 +1,7 @@
 const sequelize = require('../../../../shared/infra/database');
 const ICompraRepository = require('../../domain/repositories/ICompraRepository');
 const CompraModel = require('./compra.model');
-const ItemCompraModel = require('./itemCompra.model');
+// const ItemCompraModel = require('./itemCompra.model'); // REMOVED
 const ProdutoModel = require('../../../produtos/infrastructure/persistence/produto.model');
 const LoteModel = require('../../../produtos/infrastructure/persistence/lote.model');
 const Lancamento = require('../../../financeiro/domain/entities/lancamento.entity');
@@ -20,6 +20,7 @@ const CompraMapper = {
       idProduto: item.idProduto,
       quantidade: item.quantidade,
       custoUnitario: item.custoUnitario,
+      validade: item.validade,
       produto: item.Produto 
     })) : [];
 
@@ -29,6 +30,7 @@ const CompraMapper = {
       dataCompra: model.dataCompra,
       valorTotal: model.valorTotal,
       observacoes: model.observacoes,
+      notaFiscal: model.notaFiscal,
       itens: itens,
       fornecedor: model.Fornecedor
     });
@@ -48,16 +50,18 @@ class CompraSequelizeRepository extends ICompraRepository {
         dataCompra: compra.dataCompra,
         valorTotal: compra.valorTotal,
         observacoes: compra.observacoes,
+        notaFiscal: compra.notaFiscal,
       }, { transaction: t });
 
-      // 2. Prepara e salva os itens da compra
-      const itensParaCriar = compra.itens.map(item => ({
-        idCompra: compraCriada.id,
-        idProduto: item.idProduto,
-        quantidade: item.quantidade,
-        custoUnitario: item.custoUnitario,
-      }));
-      await ItemCompraModel.bulkCreate(itensParaCriar, { transaction: t });
+      // 2. Itens agora são salvos na tabela 'lotes' (Passo 3)
+      // Removemos a gravação em 'itens_compra'
+      // const itensParaCriar = compra.itens.map(item => ({
+      //   idCompra: compraCriada.id,
+      //   idProduto: item.idProduto,
+      //   quantidade: item.quantidade,
+      //   custoUnitario: item.custoUnitario,
+      // }));
+      // await ItemCompraModel.bulkCreate(itensParaCriar, { transaction: t });
 
       // 3. Atualiza o estoque de cada produto (ADICIONA)
       for (const item of compra.itens) {
@@ -69,6 +73,13 @@ class CompraSequelizeRepository extends ICompraRepository {
           validade: item.validade,
           custoUnitario: item.custoUnitario
         }, { transaction: t });
+
+        // ATUALIZAÇÃO DO ESTOQUE NO PRODUTO
+        const produto = await ProdutoModel.findByPk(item.idProduto, { transaction: t });
+        if (produto) {
+          const novoEstoque = Number(produto.estoque || 0) + Number(item.quantidade);
+          await produto.update({ estoque: novoEstoque }, { transaction: t });
+        }
       }
 
       // 4. Integração Financeira (Cria a Conta a Pagar)
@@ -96,9 +107,9 @@ class CompraSequelizeRepository extends ICompraRepository {
     const compraModel = await CompraModel.findByPk(id, {
       include: [
         {
-          model: ItemCompraModel,
+          model: LoteModel,
           as: 'itens',
-          include: [{ model: ProdutoModel }] // Inclui os dados do produto em cada item
+          include: [{ model: ProdutoModel }] // Lote também tem relação com Produto
         },
         {
           model: FornecedorModel // Inclui os dados do fornecedor

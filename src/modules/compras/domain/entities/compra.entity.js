@@ -1,10 +1,11 @@
 class Compra {
-  constructor({ id, idFornecedor, dataCompra, valorTotal, observacoes, itens, fornecedor }) {
+  constructor({ id, idFornecedor, dataCompra, valorTotal, observacoes, itens, fornecedor, notaFiscal }) {
     this.id = id;
     this.idFornecedor = idFornecedor;
     this.dataCompra = dataCompra;
     this.valorTotal = valorTotal;
     this.observacoes = observacoes;
+    this.notaFiscal = notaFiscal;
     this.itens = itens || []; // Array de ItemCompra
     this.fornecedor = fornecedor;
   }

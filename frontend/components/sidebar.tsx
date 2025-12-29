@@ -1,6 +1,6 @@
 'use client'
 
-import { Home, ShoppingCart, Package, Grid, DollarSign, Users, BarChart3, User, Settings, LogOut, Tag } from 'lucide-react'
+import { Home, ShoppingCart, Package, Grid, DollarSign, Users, BarChart3, User, Settings, LogOut, Tag, ShoppingBag } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
@@ -10,6 +10,7 @@ const menuItems = [
   { name: 'Vender', icon: ShoppingCart, href: '/vender' },
   { name: 'Pedidos', icon: Package, href: '/pedidos' },
   { name: 'Produtos', icon: Grid, href: '/produtos' },
+  { name: 'Compras', icon: ShoppingBag, href: '/compras' },
   { name: 'Finanças', icon: DollarSign, href: '/financas' },
   { name: 'Clientes', icon: Users, href: '/clientes' },
   { name: 'Estatísticas', icon: BarChart3, href: '/estatisticas' },

@@ -9,6 +9,7 @@ const ItemCompraModel = sequelize.define('ItemCompra', {
   idProduto: { type: DataTypes.INTEGER, allowNull: false, field: 'id_produto' },
   quantidade: { type: DataTypes.INTEGER, allowNull: false },
   custoUnitario: { type: DataTypes.DECIMAL(10, 2), allowNull: false, field: 'custo_unitario' },
+  validade: { type: DataTypes.DATEONLY, allowNull: true },
 }, {
   tableName: 'itens_compra',
   timestamps: false,

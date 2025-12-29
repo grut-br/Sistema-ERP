@@ -16,7 +16,7 @@ class RegistrarCompraUseCase {
     this.criarLancamentoUseCase = new CriarLancamentoUseCase(lancamentoRepo);
   }
 
-  async execute({ idFornecedor, dataCompra, observacoes, itens }) {
+  async execute({ idFornecedor, dataCompra, observacoes, itens, numeroNota }) {
     if (!idFornecedor || !itens || itens.length === 0) {
       throw new Error('Fornecedor e pelo menos um item são obrigatórios.');
     }
@@ -55,6 +55,7 @@ class RegistrarCompraUseCase {
       idFornecedor,
       dataCompra,
       observacoes,
+      notaFiscal: numeroNota,
       itens: itensCompraParaSalvar,
       valorTotal,
     });

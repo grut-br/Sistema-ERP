@@ -7,6 +7,7 @@ const CompraModel = sequelize.define('Compra', {
   idFornecedor: { type: DataTypes.INTEGER, field: 'id_fornecedor' },
   dataCompra: { type: DataTypes.DATEONLY, allowNull: false, field: 'data_compra' },
   valorTotal: { type: DataTypes.DECIMAL(10, 2), allowNull: false, field: 'valor_total' },
+  notaFiscal: { type: DataTypes.STRING, field: 'nota_fiscal' },
   observacoes: { type: DataTypes.TEXT },
 }, {
   tableName: 'compras',

@@ -4,7 +4,6 @@ import { useState, useEffect } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { X } from "lucide-react"
 import { formatCNPJ, formatPhone, cleanNonDigits } from "@/utils/masks"
-import "./modal-new-categoria.css"
 
 interface ModalFornecedorProps {
   isOpen: boolean

@@ -7,7 +7,6 @@ import { Search, MoreVertical, Pencil, Trash2, Camera } from "lucide-react"
 import "./produtos.css"
 import { Pagination } from "@/components/Pagination"
 import { ModalNovaCategoria } from "./components/modal-nova-categoria"
-import { ModalFornecedor } from "./components/modal-fornecedor"
 import { ModalNovoFabricante } from "./components/modal-novo-fabricante"
 
 import { ModalCadastroProduto } from "./components/modal-cadastro-produto"
@@ -17,11 +16,11 @@ import { ModalConfirmacao } from "./components/modal-confirmacao"
 export default function ProdutosPage() {
 
   // Estado para controlar qual popup está aberto
-  // Estado para controlar qual popup está aberto
+
   const [showAddModal, setShowAddModal] = useState(false) // Unified Create/Edit Modal
   
   const [showNewCategoryModal, setShowNewCategoryModal] = useState(false)
-  const [showNewFornecedorModal, setShowNewFornecedorModal] = useState(false)
+
   const [showNewFabricanteModal, setShowNewFabricanteModal] = useState(false)
 
   const [editingProduct, setEditingProduct] = useState<any | null>(null)
@@ -31,11 +30,6 @@ export default function ProdutosPage() {
   const [categoryToEdit, setCategoryToEdit] = useState<any | null>(null)
   const [categoryToDelete, setCategoryToDelete] = useState<any | null>(null)
   const [isDeletingCategory, setIsDeletingCategory] = useState(false)
-
-  // Supplier Edit/Delete State
-  const [fornecedorToEdit, setFornecedorToEdit] = useState<any | null>(null)
-  const [supplierToDelete, setSupplierToDelete] = useState<any | null>(null)
-  const [isDeletingSupplier, setIsDeletingSupplier] = useState(false)
   
   // Product Delete State
   const [productToDelete, setProductToDelete] = useState<any | null>(null)
@@ -51,7 +45,6 @@ export default function ProdutosPage() {
 
   // Estado dos dados
   const [produtos, setProdutos] = useState<any[]>([])
-  const [fornecedoresList, setFornecedoresList] = useState<any[]>([])
   const [categoriasList, setCategoriasList] = useState<any[]>([])
 
   // Pagination State
@@ -63,7 +56,6 @@ export default function ProdutosPage() {
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState("")
   const [selectedFabricanteFilter, setSelectedFabricanteFilter] = useState("")
   const [sortOption, setSortOption] = useState("id-desc") // 'id-asc', 'id-desc', 'name-asc', 'name-desc'
-  const [sortOptionFornecedor, setSortOptionFornecedor] = useState("id-desc") // Separate sort for Suppliers
   const [sortOptionFabricante, setSortOptionFabricante] = useState("id-desc") // Separate sort for Manufacturers
 
   // Form State
@@ -73,7 +65,7 @@ export default function ProdutosPage() {
 
   useEffect(() => {
     if (activeTab === 'itens') fetchProdutos()
-    if (activeTab === 'fornecedores') fetchFornecedores()
+
     if (activeTab === 'fabricantes') fetchFabricantesList()
     // Always fetch dropdown data
     fetchCategoriasList() 
@@ -114,19 +106,7 @@ export default function ProdutosPage() {
     }
   }
 
-  const fetchFornecedores = async () => {
-    try {
-      setIsLoading(true)
-      const response = await fetch('/api/fornecedores')
-      if (response.ok) {
-        setFornecedoresList(await response.json())
-      }
-    } catch (e) {
-      console.error(e)
-    } finally {
-      setIsLoading(false)
-    }
-  }
+
 
   const fetchProdutos = async () => {
     try {
@@ -150,7 +130,6 @@ export default function ProdutosPage() {
   // Filtering Logic (Client-Side)
   const getFilteredItems = () => {
     let items = activeTab === 'itens' ? produtos : 
-                activeTab === 'fornecedores' ? fornecedoresList :
                 activeTab === 'categorias' ? categoriasList : 
                 activeTab === 'fabricantes' ? fabricantes : []
 
@@ -186,26 +165,7 @@ export default function ProdutosPage() {
       })
     }
 
-    if (activeTab === 'fornecedores') {
-      if (searchTerm) {
-        const lowerTerm = searchTerm.toLowerCase()
-        // Sanitized search for CNPJ (remove dots, dashes, slashes for comparison)
-        const cleanSearch = lowerTerm.replace(/[^0-9a-z]/g, "")
-        
-        items = items.filter(f => {
-            const cleanCnpj = (f.cnpj || "").replace(/[^0-9a-z]/g, "") // Sanitize stored CNPJ
-            return f.nome?.toLowerCase().includes(lowerTerm) || cleanCnpj.includes(cleanSearch)
-        })
-      }
 
-      items.sort((a, b) => {
-        if (sortOptionFornecedor === 'id-asc') return a.id - b.id
-        if (sortOptionFornecedor === 'id-desc') return b.id - a.id
-        if (sortOptionFornecedor === 'name-asc') return a.nome.localeCompare(b.nome)
-        if (sortOptionFornecedor === 'name-desc') return b.nome.localeCompare(a.nome)
-        return 0
-      })
-    }
 
     if (activeTab === 'fabricantes') {
       if (searchTerm) {
@@ -261,10 +221,8 @@ export default function ProdutosPage() {
   //Ordem dos botões das tabs/abas
   const tabs = [
     { id: "itens", label: "Itens" },
-    { id: "compras", label: "Compras" },
     { id: "categorias", label: "Categorias" },
     { id: "fabricantes", label: "Fabricantes" },
-    { id: "fornecedores", label: "Fornecedores" },
   ]
 
   // Helpers
@@ -379,35 +337,7 @@ export default function ProdutosPage() {
     }
   }
 
-  // Fornecedor Handlers
-  const openEditFornecedor = (fornecedor: any) => {
-    setFornecedorToEdit(fornecedor)
-    setShowNewFornecedorModal(true)
-  }
 
-  const openDeleteFornecedor = (fornecedor: any) => {
-    setSupplierToDelete(fornecedor)
-  }
-
-  const handleConfirmDeleteSupplier = async () => {
-    if (!supplierToDelete) return
-    setIsDeletingSupplier(true)
-    try {
-        const response = await fetch(`/api/fornecedores/${supplierToDelete.id}`, {
-            method: 'DELETE'
-        })
-        if (!response.ok) throw new Error('Falha ao excluir fornecedor')
-        
-        toast({ title: "Sucesso", description: "Fornecedor excluído com sucesso." })
-        fetchFornecedores()
-        setSupplierToDelete(null)
-    } catch (e: any) {
-        console.error(e)
-        toast({ title: "Erro", description: e.message || "Erro ao excluir", variant: "destructive" })
-    } finally {
-        setIsDeletingSupplier(false)
-    }
-  }
 
   // Fabricante Handlers
   const openEditFabricante = (fabricante: any) => {
@@ -460,7 +390,7 @@ export default function ProdutosPage() {
             {/* Header Input agora é a busca principal */}
             <input 
               type="text" 
-              placeholder={activeTab === 'fornecedores' ? "Buscar por Nome ou CNPJ" : "Procure por nome"} 
+              placeholder="Procure por nome" 
               value={searchTerm}
               onChange={(e) => {
                 setSearchTerm(e.target.value)
@@ -520,20 +450,7 @@ export default function ProdutosPage() {
               </>
             )}
 
-            {activeTab === 'fornecedores' && (
-              <div className="filter-group">
-                  <label>Ordenar por</label>
-                  <select 
-                    value={sortOptionFornecedor}
-                    onChange={(e) => setSortOptionFornecedor(e.target.value)}
-                  >
-                    <option value="name-asc">Nome (A-Z)</option>
-                    <option value="name-desc">Nome (Z-A)</option>
-                    <option value="id-desc">ID (Decrescente)</option>
-                    <option value="id-asc">ID (Crescente)</option>
-                  </select>
-              </div>
-            )}
+
 
             {(activeTab === 'categorias') && (
                <div className="filter-group">
@@ -565,12 +482,7 @@ export default function ProdutosPage() {
                 </div>
             )}
 
-            {(activeTab === 'compras') && (
-               <div className="filter-search">
-                  <input type="text" placeholder="Buscar..." />
-                  <Search className="filter-search-icon" />
-                </div>
-            )}
+
 
             <button className="btn-filter">Pesquisar</button>
             {/* A pesquisa é 'live' ao alterar os inputs, mas o botão pode servir para forçar refresh ou UX */}
@@ -599,14 +511,7 @@ export default function ProdutosPage() {
                   Cadastrar Produto +
                 </button>
               )}
-              {activeTab === 'fornecedores' && (
-                <button className="btn-cadastrar" onClick={() => {
-                  setFornecedorToEdit(null)
-                  setShowNewFornecedorModal(true)
-                }}>
-                  Novo Fornecedor +
-                </button>
-              )}
+
               {activeTab === 'categorias' && (
                 <button className="btn-cadastrar" onClick={() => {
                   setCategoryToEdit(null)
@@ -615,11 +520,7 @@ export default function ProdutosPage() {
                   Nova Categoria +
                 </button>
               )}
-               {activeTab === 'compras' && (
-                <button className="btn-cadastrar" onClick={() => console.log("Nova Entrada")}>
-                  Nova Entrada +
-                </button>
-              )}
+
                {activeTab === 'fabricantes' && (
                 <button className="btn-cadastrar" onClick={() => {
                     setFabricanteToEdit(null)
@@ -690,54 +591,7 @@ export default function ProdutosPage() {
                 </table>
               )}
 
-              {/* TABELA FORNECEDORES */}
-              {activeTab === 'fornecedores' && (
-                <table className="produtos-table">
-                  <thead>
-                    <tr>
-                      <th className="text-center whitespace-nowrap">Ações</th>
-                      <th className="whitespace-nowrap">ID</th>
-                      <th className="whitespace-nowrap">Nome</th>
-                      <th className="whitespace-nowrap">CNPJ</th>
-                      <th className="whitespace-nowrap">Email</th>
-                      <th className="whitespace-nowrap">Telefone</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {isLoading ? (
-                      <tr><td colSpan={6} className="text-center py-8">Carregando...</td></tr>
-                    ) : currentDisplayItems.length === 0 ? (
-                      <tr><td colSpan={6} className="text-center py-8">Nenhum fornecedor encontrado</td></tr>
-                    ) : currentDisplayItems.map((f: any) => (
-                      <tr key={f.id}>
-                        <td>
-                            <div className="flex justify-center items-center gap-2">
-                            <button 
-                              className="p-2 text-amber-500 hover:bg-amber-50 rounded-md transition-colors"
-                              title="Editar"
-                              onClick={() => openEditFornecedor(f)}
-                            >
-                              <Pencil size={18} />
-                            </button>
-                            <button 
-                              className="p-2 text-red-500 hover:bg-red-50 rounded-md transition-colors"
-                              title="Excluir"
-                              onClick={() => openDeleteFornecedor(f)}
-                            >
-                              <Trash2 size={18} />
-                            </button>
-                          </div>
-                        </td>
-                        <td className="whitespace-nowrap">{f.id}</td>
-                        <td className="whitespace-nowrap">{f.nome}</td>
-                        <td className="whitespace-nowrap">{f.cnpj || "-"}</td>
-                        <td className="whitespace-nowrap">{f.email || "-"}</td>
-                        <td className="whitespace-nowrap">{f.telefone || "-"}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
+
 
                {/* TABELA CATEGORIAS */}
                {activeTab === 'categorias' && (
@@ -837,12 +691,7 @@ export default function ProdutosPage() {
                 </table>
               )}
 
-              {/* TABELA COMPRAS (Placeholder) */}
-              {activeTab === 'compras' && (
-                <div style={{ padding: '2rem', textAlign: 'center', color: '#666' }}>
-                  <h3>Módulo de Compras em desenvolvimento</h3>
-                </div>
-              )}
+
 
             </div>
 
@@ -892,26 +741,7 @@ export default function ProdutosPage() {
         isLoading={isDeletingCategory}
       />
 
-      {/* POPUP 4: Novo Fornecedor */}
-      <ModalFornecedor
-        isOpen={showNewFornecedorModal}
-        onClose={() => setShowNewFornecedorModal(false)}
-        onSuccess={() => {
-          if (activeTab === 'fornecedores') fetchFornecedores()
-        }}
-        fornecedorParaEditar={fornecedorToEdit}
-      />
-      
-      <ModalConfirmacao
-        isOpen={!!supplierToDelete}
-        onClose={() => setSupplierToDelete(null)}
-        onConfirm={handleConfirmDeleteSupplier}
-        titulo="Excluir Fornecedor"
-        mensagem={`Tem certeza que deseja excluir o fornecedor "${supplierToDelete?.nome}"?`}
-        confirmText="Excluir"
-        variant="danger"
-        isLoading={isDeletingSupplier}
-      />
+
 
        <ModalConfirmacao
         isOpen={!!productToDelete}

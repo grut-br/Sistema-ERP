@@ -19,5 +19,6 @@ LoteModel.belongsTo(ProdutoModel, { foreignKey: 'idProduto' });
 ProdutoModel.hasMany(LoteModel, { foreignKey: 'idProduto', as: 'lotes' });
 
 LoteModel.belongsTo(CompraModel, { foreignKey: 'idCompra' });
+CompraModel.hasMany(LoteModel, { foreignKey: 'idCompra', as: 'itens' });
 
 module.exports = LoteModel;
