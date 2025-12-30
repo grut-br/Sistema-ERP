@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { Sidebar } from "@/components/sidebar"
-import { Search, MoreVertical, Pencil, Trash2, Camera } from "lucide-react"
+import { Search, MoreVertical, Pencil, Trash2, Camera, Eye } from "lucide-react"
 import "./produtos.css"
 import { Pagination } from "@/components/Pagination"
 import { ModalNovaCategoria } from "./components/modal-nova-categoria"
@@ -11,6 +11,8 @@ import { ModalNovoFabricante } from "./components/modal-novo-fabricante"
 
 import { ModalCadastroProduto } from "./components/modal-cadastro-produto"
 import { ModalConfirmacao } from "./components/modal-confirmacao"
+import { ModalDetalhesProduto } from "./components/modal-detalhes-produto"
+import { FilterX } from "lucide-react"
 
 
 export default function ProdutosPage() {
@@ -22,6 +24,10 @@ export default function ProdutosPage() {
   const [showNewCategoryModal, setShowNewCategoryModal] = useState(false)
 
   const [showNewFabricanteModal, setShowNewFabricanteModal] = useState(false)
+  
+  // Details Modal State
+  const [showDetailsModal, setShowDetailsModal] = useState(false)
+  const [selectedProductDetails, setSelectedProductDetails] = useState<any | null>(null)
 
   const [editingProduct, setEditingProduct] = useState<any | null>(null)
   const [activeTab, setActiveTab] = useState("itens") // 'itens' | 'compras' | 'fornecedores' | 'categorias'
@@ -55,8 +61,8 @@ export default function ProdutosPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState("")
   const [selectedFabricanteFilter, setSelectedFabricanteFilter] = useState("")
-  const [sortOption, setSortOption] = useState("id-desc") // 'id-asc', 'id-desc', 'name-asc', 'name-desc'
-  const [sortOptionFabricante, setSortOptionFabricante] = useState("id-desc") // Separate sort for Manufacturers
+  const [sortOption, setSortOption] = useState("name-asc") // 'id-asc', 'id-desc', 'name-asc', 'name-desc'
+  const [sortOptionFabricante, setSortOptionFabricante] = useState("name-asc") // Separate sort for Manufacturers
 
   // Form State
   const [categorias, setCategorias] = useState<any[]>([])
@@ -484,8 +490,20 @@ export default function ProdutosPage() {
 
 
 
-            <button className="btn-filter">Pesquisar</button>
-            {/* A pesquisa é 'live' ao alterar os inputs, mas o botão pode servir para forçar refresh ou UX */}
+            <button 
+              className="btn-filter flex items-center justify-center gap-2 bg-gray-500 hover:bg-gray-600"
+              onClick={() => {
+                setSearchTerm("")
+                setSelectedCategoryFilter("")
+                setSelectedFabricanteFilter("")
+                setSortOption("name-asc")
+                setSortOptionFabricante("name-asc")
+                setCurrentPage(1) // Also good practice to reset page
+              }}
+            >
+              <FilterX size={18} />
+              Limpar Filtros
+            </button>
           </aside>
 
           {/* Área principal com tabela */}
@@ -560,6 +578,16 @@ export default function ProdutosPage() {
                       <tr key={produto.id}>
                         <td>
                           <div className="flex justify-center items-center gap-2">
+                             <button
+                              className="p-2 text-blue-500 hover:bg-blue-50 rounded-md transition-colors"
+                              title="Ver Detalhes"
+                              onClick={() => {
+                                setSelectedProductDetails(produto)
+                                setShowDetailsModal(true)
+                              }}
+                             >
+                               <Eye size={18} />
+                             </button>
                              <button
                               className="p-2 text-amber-500 hover:bg-amber-50 rounded-md transition-colors"
                               title="Editar"
@@ -742,6 +770,14 @@ export default function ProdutosPage() {
       />
 
 
+
+      <ModalDetalhesProduto 
+        isOpen={showDetailsModal}
+        onClose={() => setShowDetailsModal(false)}
+        produto={selectedProductDetails}
+        onEdit={handleViewProduct}
+        onDelete={openDeleteProduct}
+      />
 
        <ModalConfirmacao
         isOpen={!!productToDelete}

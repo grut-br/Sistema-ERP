@@ -1,7 +1,24 @@
 import { useState, useEffect } from "react"
 import { useToast } from "@/hooks/use-toast"
-import { X, Plus, Trash2 } from "lucide-react"
+import { X, Plus, Trash2, Check, ChevronsUpDown } from "lucide-react"
 import { format } from "date-fns"
+
+import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import { Checkbox } from "@/components/ui/checkbox" // Assuming we have this, or standard input type checkbox
 
 interface ModalNovaEntradaProps {
   isOpen: boolean
@@ -14,7 +31,7 @@ interface ItemCarrinho {
   nomeProduto: string
   quantidade: number
   custoUnitario: number
-  validade: string
+  validade: string | null
 }
 
 export const ModalNovaEntrada = ({ isOpen, onClose, onSuccess }: ModalNovaEntradaProps) => {
@@ -38,6 +55,9 @@ export const ModalNovaEntrada = ({ isOpen, onClose, onSuccess }: ModalNovaEntrad
     validade: ""
   })
   
+  const [semValidade, setSemValidade] = useState(false)
+  const [comboboxOpen, setComboboxOpen] = useState(false)
+
   // Cart State
   const [itens, setItens] = useState<ItemCarrinho[]>([])
 
@@ -51,9 +71,6 @@ export const ModalNovaEntrada = ({ isOpen, onClose, onSuccess }: ModalNovaEntrad
       itemCusto: false,
       itemValidade: false,
   })
-
-  // Product Search
-  const [produtoSearchInfo, setProdutoSearchInfo] = useState("")
 
   useEffect(() => {
     if (isOpen) {
@@ -97,22 +114,24 @@ export const ModalNovaEntrada = ({ isOpen, onClose, onSuccess }: ModalNovaEntrad
       custoUnitario: "",
       validade: ""
     })
-    setProdutoSearchInfo("")
+    setSemValidade(false)
   }
 
   const handleAddItem = () => {
     // Validation
+    const isValidadeRequired = !semValidade;
+
     const newErrors = {
         ...errors,
         itemProduto: !itemForm.idProduto,
         itemQtd: !itemForm.quantidade,
         itemCusto: !itemForm.custoUnitario,
-        itemValidade: !itemForm.validade
+        itemValidade: isValidadeRequired && !itemForm.validade
     }
     
     if (newErrors.itemProduto || newErrors.itemQtd || newErrors.itemCusto || newErrors.itemValidade) {
         setErrors(newErrors)
-        toast({ title: "Erro", description: "Preencha todos os campos do item.", variant: "destructive" })
+        toast({ title: "Erro", description: "Preencha todos os campos obrigatórios do item.", variant: "destructive" })
         return
     }
 
@@ -124,7 +143,7 @@ export const ModalNovaEntrada = ({ isOpen, onClose, onSuccess }: ModalNovaEntrad
       nomeProduto: produtoSelected.nome,
       quantidade: Number(itemForm.quantidade),
       custoUnitario: Number(itemForm.custoUnitario.replace(',', '.')),
-      validade: itemForm.validade
+      validade: semValidade ? null : itemForm.validade
     }
 
     setItens([...itens, novoItem])
@@ -147,21 +166,6 @@ export const ModalNovaEntrada = ({ isOpen, onClose, onSuccess }: ModalNovaEntrad
   }
 
   const handleFinalizar = async () => {
-    // Debug Log requested by user
-    console.log("PAYLOAD DEBUG:", {
-        fornecedorSelecionado: idFornecedor, 
-        itens: itens,
-        payloadFinal: {
-            idFornecedor: Number(idFornecedor), // Correct key based on usecase
-            notaFiscal: numeroNota, // Correct key based on usecase 'notaFiscal: numeroNota' param mapping or direct prop? 
-                                    // UseCase execute(dados) destructures: { idFornecedor, dataCompra, itens, numeroNota, observacoes }
-                                    // Actually, execute({ idFornecedor, dataCompra, itens, numeroNota, observacoes })
-            numeroNota, 
-            dataCompra: dataEmissao,
-            itens
-        }
-    });
-
     // Header Validation
     const newErrors = {
         ...errors,
@@ -183,13 +187,13 @@ export const ModalNovaEntrada = ({ isOpen, onClose, onSuccess }: ModalNovaEntrad
 
     try {
       const payload = {
-        idFornecedor: Number(idFornecedor), // Fixed key: idFornecedor
-        numeroNota: numeroNota,             // Key expected by UseCase execute param
-        dataCompra: dataEmissao,            // Key expected by UseCase execute param
-        valorTotal: itens.reduce((acc, i) => acc + (i.quantidade * i.custoUnitario), 0), // Optional but good
+        idFornecedor: Number(idFornecedor),
+        numeroNota: numeroNota,
+        dataCompra: dataEmissao,
+        valorTotal: itens.reduce((acc, i) => acc + (i.quantidade * i.custoUnitario), 0),
         observacoes: observacoes,
         itens: itens.map(i => ({
-            idProduto: Number(i.idProduto), // Ensure number
+            idProduto: Number(i.idProduto),
             quantidade: Number(i.quantidade),
             custoUnitario: Number(i.custoUnitario),
             validade: i.validade
@@ -204,7 +208,6 @@ export const ModalNovaEntrada = ({ isOpen, onClose, onSuccess }: ModalNovaEntrad
 
       if (!response.ok) {
         const err = await response.json()
-        // console.error("Backend Error:", err) - let the catch handle or log here
         throw new Error(err.error || 'Falha ao lançar entrada')
       }
 
@@ -215,20 +218,18 @@ export const ModalNovaEntrada = ({ isOpen, onClose, onSuccess }: ModalNovaEntrad
     } catch (e: any) {
       console.error("Erro ao finalizar:", e)
       toast({ title: "Erro", description: e.message, variant: "destructive" })
-      // Do NOT throw error here to avoid React overlay
     }
   }
 
   const totalNota = itens.reduce((acc, item) => acc + (item.quantidade * item.custoUnitario), 0)
 
-  // Filtered Products
-  const filteredProdutos = produtos.filter(p => p.nome.toLowerCase().includes(produtoSearchInfo.toLowerCase()))
-
   if (!isOpen) return null
+
+  // Find selected product name for Combobox display
+  const selectedProductName = produtos.find(p => String(p.id) === itemForm.idProduto)?.nome
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      {/* Max Width 6xl as requested */}
       <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
         
         {/* Header */}
@@ -305,32 +306,61 @@ export const ModalNovaEntrada = ({ isOpen, onClose, onSuccess }: ModalNovaEntrad
           <div className="border rounded-md p-4 space-y-4">
              <div className="font-semibold text-gray-700">Adicionar Itens</div>
              
-             <div className="grid grid-cols-12 gap-4 items-end">
-                <div className="col-span-5">
-                  <label className="block text-xs text-gray-500 mb-1">Produto (Busca)</label>
-                  <input 
-                    type="text" 
-                    placeholder="Filtrar produto..." 
-                    className="w-full p-1 text-sm border rounded mb-1 bg-gray-50"
-                    value={produtoSearchInfo}
-                    onChange={e => setProdutoSearchInfo(e.target.value)}
-                  />
-                  <select 
-                    className={`w-full p-2 border rounded h-10 ${errors.itemProduto ? 'border-red-500' : ''}`}
-                    value={itemForm.idProduto}
-                    onChange={e => {
-                        setItemForm({...itemForm, idProduto: e.target.value})
-                        if(errors.itemProduto) setErrors({...errors, itemProduto: false})
-                    }}
-                  >
-                    <option value="">Selecione o produto...</option>
-                    {filteredProdutos.map(p => (
-                      <option key={p.id} value={p.id}>{p.nome}</option>
-                    ))}
-                  </select>
+             {/* New Layout Grid */}
+             <div className="flex gap-4 items-end">
+                
+                {/* 1. Produto - 35% */}
+                <div className="w-[35%]">
+                  <label className="block text-xs text-gray-500 mb-1">Produto *</label>
+                  <Popover open={comboboxOpen} onOpenChange={setComboboxOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={comboboxOpen}
+                        className={`w-full justify-between h-10 ${errors.itemProduto ? 'border-red-500' : ''}`}
+                      >
+                        {itemForm.idProduto
+                          ? selectedProductName
+                          : "Selecione o produto..."}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[400px] p-0 z-[9999]">
+                      <Command>
+                        <CommandInput placeholder="Procurar produto..." />
+                        <CommandList>
+                            <CommandEmpty>Nenhum produto encontrado.</CommandEmpty>
+                            <CommandGroup>
+                            {produtos.map((produto) => (
+                                <CommandItem
+                                key={produto.id}
+                                value={produto.nome}
+                                onSelect={(currentValue) => {
+                                    // ComboBox logic for selection
+                                    setItemForm(prev => ({...prev, idProduto: String(produto.id)}))
+                                    setComboboxOpen(false)
+                                    if(errors.itemProduto) setErrors(e => ({...e, itemProduto: false}))
+                                }}
+                                >
+                                <Check
+                                    className={cn(
+                                    "mr-2 h-4 w-4",
+                                    itemForm.idProduto === String(produto.id) ? "opacity-100" : "opacity-0"
+                                    )}
+                                />
+                                {produto.nome}
+                                </CommandItem>
+                            ))}
+                            </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
                 </div>
 
-                <div className="col-span-1">
+                {/* 2. Qtd - 10% */}
+                <div className="w-[10%]">
                    <label className="block text-xs text-gray-500 mb-1">Qtd *</label>
                    <input 
                      type="number" 
@@ -344,7 +374,8 @@ export const ModalNovaEntrada = ({ isOpen, onClose, onSuccess }: ModalNovaEntrad
                    />
                 </div>
 
-                <div className="col-span-2">
+                {/* 3. Custo Uni - 15% */}
+                <div className="w-[15%]">
                    <label className="block text-xs text-gray-500 mb-1">Custo Uni.(R$) *</label>
                    <input 
                      type="number" 
@@ -359,11 +390,33 @@ export const ModalNovaEntrada = ({ isOpen, onClose, onSuccess }: ModalNovaEntrad
                    />
                 </div>
 
-                <div className="col-span-3">
-                   <label className="block text-xs text-gray-500 mb-1">Validade *</label>
+                 {/* 4. Sem Validade Checkbox - Auto width */}
+                <div className="flex items-center gap-1.5 h-10 pb-2">
+                    <input
+                        type="checkbox"
+                        id="semValidade"
+                        checked={semValidade}
+                        onChange={(e) => {
+                            setSemValidade(e.target.checked)
+                            if (e.target.checked) {
+                                setItemForm(prev => ({...prev, validade: ""}))
+                                if(errors.itemValidade) setErrors(prev => ({...prev, itemValidade: false}))
+                            }
+                        }}
+                        className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <label htmlFor="semValidade" className="text-xs text-gray-600 cursor-pointer select-none">
+                        S/ Validade
+                    </label>
+                </div>
+
+                {/* 5. Validade - 25% (Remaining adjusts if needed, but flex handles simple width here effectively) */}
+                <div className="w-[20%]">
+                   <label className="block text-xs text-gray-500 mb-1">Validade {semValidade ? '(N/A)' : '*'}</label>
                    <input 
                      type="date" 
-                     className={`w-full p-2 border rounded h-10 ${errors.itemValidade ? 'border-red-500' : ''}`}
+                     disabled={semValidade}
+                     className={`w-full p-2 border rounded h-10 ${errors.itemValidade && !semValidade ? 'border-red-500' : ''} ${semValidade ? 'bg-gray-100 text-gray-400' : ''}`}
                      value={itemForm.validade}
                      onChange={e => {
                         setItemForm({...itemForm, validade: e.target.value})
@@ -372,10 +425,11 @@ export const ModalNovaEntrada = ({ isOpen, onClose, onSuccess }: ModalNovaEntrad
                    />
                 </div>
 
-                <div className="col-span-1">
+                {/* 6. Button - 5% */}
+                <div className="w-[5%]">
                   <button 
                     onClick={handleAddItem}
-                    className="w-full h-10 bg-emerald-600 text-white rounded hover:bg-emerald-700 flex items-center justify-center"
+                    className="w-full h-10 bg-emerald-600 text-white rounded hover:bg-emerald-700 flex items-center justify-center transition-colors"
                     title="Adicionar Item"
                   >
                     <Plus size={20} />
@@ -383,7 +437,7 @@ export const ModalNovaEntrada = ({ isOpen, onClose, onSuccess }: ModalNovaEntrad
                 </div>
              </div>
              
-             {/* Temporary Table */}
+             {/* Table Items */}
              <div className="border rounded mt-4 max-h-60 overflow-y-auto">
                <table className="w-full text-sm text-left">
                  <thead className="bg-gray-100 text-gray-600 sticky top-0">
@@ -406,7 +460,7 @@ export const ModalNovaEntrada = ({ isOpen, onClose, onSuccess }: ModalNovaEntrad
                           <td className="p-2">{item.quantidade}</td>
                           <td className="p-2">R$ {item.custoUnitario.toFixed(2)}</td>
                           <td className="p-2 font-medium">R$ {(item.quantidade * item.custoUnitario).toFixed(2)}</td>
-                          <td className="p-2">{format(new Date(item.validade), 'dd/MM/yyyy')}</td>
+                          <td className="p-2">{item.validade ? format(new Date(item.validade), 'dd/MM/yyyy') : 'N/A'}</td>
                           <td className="p-2">
                              <button onClick={() => handleRemoveItem(idx)} className="text-red-500 hover:text-red-700">
                                <Trash2 size={16} />

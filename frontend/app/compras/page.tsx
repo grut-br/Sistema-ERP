@@ -3,56 +3,106 @@
 import { useState, useEffect } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { Sidebar } from "@/components/sidebar"
-import { Search, Pencil, Trash2, Eye } from "lucide-react"
+import { Search, Pencil, Trash2, Eye, FilterX, Check, ChevronsUpDown } from "lucide-react"
 import { Pagination } from "@/components/Pagination"
 import { ModalFornecedor } from "./components/modal-fornecedor"
 import { ModalNovaEntrada } from "./components/modal-nova-entrada"
 import { ModalDetalhesCompra } from "./components/modal-detalhes-compra"
 import "./compras.css"
+import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
 
 export default function ComprasPage() {
   const { toast } = useToast()
   const [activeTab, setActiveTab] = useState("entradas") // 'entradas' | 'fornecedores'
   const [isLoading, setIsLoading] = useState(false)
-  const [searchTerm, setSearchTerm] = useState("")
   
-  // Data State
+  // -- Data State --
   const [fornecedoresList, setFornecedoresList] = useState<any[]>([])
+  const [produtosList, setProdutosList] = useState<any[]>([])
   const [comprasList, setComprasList] = useState<any[]>([])
   
-  // Pagination State
+  // -- Pagination State --
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
 
-  // Purchase Modal State
+  // -- Filters State (Entradas) --
+  const [selectedFornecedorFilter, setSelectedFornecedorFilter] = useState("") 
+  const [selectedProductFilter, setSelectedProductFilter] = useState("") // From Top Bar Combobox
+  const [filterNf, setFilterNf] = useState("")
+  const [dateStart, setDateStart] = useState("")
+  const [dateEnd, setDateEnd] = useState("")
+  const [sortOrderCompra, setSortOrderCompra] = useState("DESC")
+
+  // -- UI State --
+  const [comboboxOpen, setComboboxOpen] = useState(false) // For Top Bar
+  const [searchTermFornecedor, setSearchTermFornecedor] = useState("") // For Fornecedores Tab Search
+
+  // -- Modal States --
   const [showNewEntradaModal, setShowNewEntradaModal] = useState(false)
   const [showDetalhesModal, setShowDetalhesModal] = useState(false)
   const [selectedCompraId, setSelectedCompraId] = useState<number | null>(null)
 
-  // Supplier Edit/Delete State
   const [showNewFornecedorModal, setShowNewFornecedorModal] = useState(false)
   const [fornecedorToEdit, setFornecedorToEdit] = useState<any | null>(null)
   const [supplierToDelete, setSupplierToDelete] = useState<any | null>(null)
   const [isDeletingSupplier, setIsDeletingSupplier] = useState(false)
 
-  // Sorting
-  const [sortOptionFornecedor, setSortOptionFornecedor] = useState("id-desc")
+  // -- Sorting (Fornecedores) --
+  const [sortOptionFornecedor, setSortOptionFornecedor] = useState("name-asc")
 
   useEffect(() => {
-    if (activeTab === 'fornecedores') fetchFornecedores()
-    if (activeTab === 'entradas') fetchCompras()
-  }, [activeTab])
+    fetchFornecedores()
+    fetchProdutos() 
+  }, []) 
+
+  // Debounce fetch when filters change
+  useEffect(() => {
+    if (activeTab === 'entradas') {
+        const timer = setTimeout(() => {
+            fetchCompras() 
+        }, 500)
+        return () => clearTimeout(timer)
+    }
+  }, [activeTab, selectedFornecedorFilter, selectedProductFilter, filterNf, dateStart, dateEnd, sortOrderCompra])
 
   const fetchCompras = async () => {
     try {
       setIsLoading(true)
-      const response = await fetch('/api/compras')
+      const params = new URLSearchParams()
+      
+      // Top Bar Filter (Product ID)
+      if (selectedProductFilter) params.append('idProduto', selectedProductFilter)
+      
+      // Sidebar Filters
+      if (selectedFornecedorFilter) params.append('idFornecedor', selectedFornecedorFilter)
+      if (filterNf) params.append('notaFiscal', filterNf)
+      
+      if (dateStart) params.append('dataInicio', dateStart)
+      if (dateEnd) params.append('dataFim', dateEnd)
+      
+      // Sort
+      params.append('sort', sortOrderCompra)
+
+      const response = await fetch(`/api/compras?${params.toString()}`)
       if (response.ok) {
         setComprasList(await response.json())
       }
     } catch (e) {
         console.error(e)
-        toast({ title: "Erro", description: "Falha ao carregar compras", variant: "destructive" })
     } finally {
         setIsLoading(false)
     }
@@ -60,57 +110,63 @@ export default function ComprasPage() {
 
   const fetchFornecedores = async () => {
     try {
-      setIsLoading(true)
       const response = await fetch('/api/fornecedores')
-      if (response.ok) {
-        setFornecedoresList(await response.json())
-      }
-    } catch (e) {
-      console.error(e)
-      toast({ title: "Erro", description: "Falha ao carregar fornecedores", variant: "destructive" })
-    } finally {
-      setIsLoading(false)
-    }
+      if (response.ok) setFornecedoresList(await response.json())
+    } catch (e) { console.error(e) }
   }
 
-  // Filter & Sort Logic
+  const fetchProdutos = async () => {
+    try {
+      const response = await fetch('/api/produtos')
+      if (response.ok) setProdutosList(await response.json())
+    } catch (e) { console.error(e) }
+  }
+
+  // Client-Side Logic for Fornecedores Tab
   const getFilteredItems = () => {
-    let items = activeTab === 'fornecedores' ? fornecedoresList : 
-                activeTab === 'entradas' ? comprasList : []
-
-    // Search
-    if (activeTab === 'fornecedores' && searchTerm) {
-      const lowerTerm = searchTerm.toLowerCase()
-      const cleanSearch = lowerTerm.replace(/[^0-9a-z]/g, "")
-        
-      items = items.filter(f => {
-          const cleanCnpj = (f.cnpj || "").replace(/[^0-9a-z]/g, "") 
-          return f.nome?.toLowerCase().includes(lowerTerm) || cleanCnpj.includes(cleanSearch)
-      })
-    }
-
-    // Sort
     if (activeTab === 'fornecedores') {
-      items.sort((a, b) => {
-        if (sortOptionFornecedor === 'id-asc') return a.id - b.id
-        if (sortOptionFornecedor === 'id-desc') return b.id - a.id
-        if (sortOptionFornecedor === 'name-asc') return a.nome.localeCompare(b.nome)
-        if (sortOptionFornecedor === 'name-desc') return b.nome.localeCompare(a.nome)
-        return 0
-      })
+        let items = [...fornecedoresList]
+        if (searchTermFornecedor) {
+             const lowerTerm = searchTermFornecedor.toLowerCase()
+             const cleanSearch = lowerTerm.replace(/[^0-9a-z]/g, "")
+             items = items.filter(f => {
+                const cleanCnpj = (f.cnpj || "").replace(/[^0-9a-z]/g, "") 
+                return f.nome?.toLowerCase().includes(lowerTerm) || cleanCnpj.includes(cleanSearch)
+             })
+        }
+        items.sort((a, b) => {
+            if (sortOptionFornecedor === 'id-asc') return a.id - b.id
+            if (sortOptionFornecedor === 'id-desc') return b.id - a.id
+            if (sortOptionFornecedor === 'name-asc') return a.nome.localeCompare(b.nome)
+            if (sortOptionFornecedor === 'name-desc') return b.nome.localeCompare(a.nome)
+            return 0
+        })
+        return items
     }
-
-    return items
+    return comprasList
   }
 
   const currentItemsList = getFilteredItems()
   const totalPages = Math.ceil(currentItemsList.length / itemsPerPage)
 
-  // Handlers
   const handleTabs = (tab: string) => {
     setActiveTab(tab)
     setCurrentPage(1)
-    setSearchTerm("")
+    setSearchTermFornecedor("")
+  }
+
+  const clearFilters = () => {
+      setSelectedProductFilter("")
+      setSortOptionFornecedor("name-asc")
+      
+      // Compras filters
+      setSelectedFornecedorFilter("")
+      setFilterNf("")
+      setDateStart("")
+      setDateEnd("")
+      setSortOrderCompra("DESC")
+      
+      setCurrentPage(1)
   }
 
   const openEditFornecedor = (fornecedor: any) => {
@@ -136,7 +192,7 @@ export default function ComprasPage() {
         setSupplierToDelete(null)
     } catch (e: any) {
         console.error(e)
-        const msg = e.message.includes("produtos associados") // Assuming backend protects this
+        const msg = e.message.includes("produtos associados") 
             ? "Não é possível excluir fornecedor com produtos associados."
             : (e.message || "Erro ao excluir");
         toast({ title: "Erro", description: msg, variant: "destructive" })
@@ -150,23 +206,84 @@ export default function ComprasPage() {
     currentPage * itemsPerPage
   )
 
+  const selectedProductName = produtosList.find(p => String(p.id) === selectedProductFilter)?.nome
+
   return (
     <div className="produtos-layout">
       <Sidebar />
       <div className="produtos-content">
         <div className="produtos-header">
             <h1>Compras</h1>
-             <div className="search-bar">
-                {activeTab === 'fornecedores' && (
-                    <>
+            <div className="search-bar w-full max-w-md">
+                {activeTab === 'fornecedores' ? (
+                     <div className="relative w-full">
                         <input 
-                        type="text" 
-                        placeholder="Buscar Fornecedor (Nome ou CNPJ)" 
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
+                            type="text" 
+                            className="w-full pl-3 pr-10 py-2 border rounded-md"
+                            placeholder="Buscar Fornecedor (Nome/CNPJ)" 
+                            value={searchTermFornecedor}
+                            onChange={(e) => setSearchTermFornecedor(e.target.value)}
                         />
-                        <Search className="search-icon" />
-                    </>
+                        <Search className="absolute right-3 top-2.5 h-5 w-5 text-gray-400" />
+                     </div>
+                ) : (
+                    /* Product Combobox for Entries */
+                    <Popover open={comboboxOpen} onOpenChange={setComboboxOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={comboboxOpen}
+                        className="w-full justify-between h-11 bg-white border-gray-200 text-gray-700 hover:bg-gray-50"
+                      >
+                        {selectedProductFilter
+                          ? selectedProductName
+                          : "Filtrar por nome do produto..."}
+                        <div className="flex items-center">
+                            {selectedProductFilter && (
+                                <div 
+                                    className="mr-2 p-1 hover:bg-gray-200 rounded-full"
+                                    onClick={(e) => {
+                                        e.stopPropagation()
+                                        setSelectedProductFilter("")
+                                    }}
+                                >
+                                    <Trash2 size={14} className="text-gray-500" />
+                                </div>
+                            )}
+                            <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
+                        </div>
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[500px] p-0 z-[50]" align="end">
+                      <Command>
+                        <CommandInput placeholder="Procurar produto..." />
+                        <CommandList>
+                            <CommandEmpty>Nenhum produto encontrado.</CommandEmpty>
+                            <CommandGroup>
+                            {produtosList.map((produto) => (
+                                <CommandItem
+                                key={produto.id}
+                                value={produto.nome}
+                                onSelect={() => {
+                                    setSelectedProductFilter(String(produto.id))
+                                    setComboboxOpen(false)
+                                }}
+                                >
+                                <Check
+                                    className={cn(
+                                    "mr-2 h-4 w-4",
+                                    selectedProductFilter === String(produto.id) ? "opacity-100" : "opacity-0"
+                                    )}
+                                />
+                                {produto.nome}
+                                </CommandItem>
+                            ))}
+                            </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
                 )}
             </div>
         </div>
@@ -174,6 +291,7 @@ export default function ComprasPage() {
         <div className="produtos-main">
             <aside className="filters-panel">
                 <h3>Filtros</h3>
+                
                 {activeTab === 'fornecedores' && (
                     <div className="filter-group">
                         <label>Ordenar por</label>
@@ -188,13 +306,79 @@ export default function ComprasPage() {
                         </select>
                     </div>
                 )}
+                
                  {activeTab === 'entradas' && (
-                     <div className="text-sm text-gray-500 p-2">
-                        Filtros de Data (Em breve)
-                     </div>
+                     <>
+                        <div className="filter-group">
+                             <label>Ordenar por Data</label>
+                             <select 
+                                value={sortOrderCompra}
+                                onChange={(e) => setSortOrderCompra(e.target.value)}
+                            >
+                                <option value="DESC">Mais recentes primeiro</option>
+                                <option value="ASC">Mais antigos primeiro</option>
+                            </select>
+                        </div>
+
+                        <div className="filter-group">
+                            <label>Fornecedor</label>
+                            <select 
+                                value={selectedFornecedorFilter}
+                                onChange={(e) => setSelectedFornecedorFilter(e.target.value)}
+                            >
+                                <option value="">Todos</option>
+                                {fornecedoresList.map(f => (
+                                    <option key={f.id} value={f.id}>{f.nome}</option>
+                                ))}
+                            </select>
+                        </div>
+                        
+                        <div className="filter-group">
+                             <label>Número da NF</label>
+                             <input 
+                                type="text"
+                                className="w-full p-2 border rounded text-sm mb-2"
+                                placeholder="Digite o nº"
+                                value={filterNf}
+                                onChange={e => setFilterNf(e.target.value)}
+                             />
+                        </div>
+
+                        <div className="filter-group">
+                             <label>Período</label>
+                             <div className="flex flex-col gap-2">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-xs text-gray-500 w-8">De:</span>
+                                    <input 
+                                        type="date" 
+                                        className="flex-1 p-2 border rounded text-sm"
+                                        value={dateStart}
+                                        onChange={e => setDateStart(e.target.value)}
+                                        title="Data Início"
+                                    />
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-xs text-gray-500 w-8">Até:</span>
+                                    <input 
+                                        type="date" 
+                                        className="flex-1 p-2 border rounded text-sm"
+                                        value={dateEnd}
+                                        onChange={e => setDateEnd(e.target.value)}
+                                        title="Data Fim"
+                                    />
+                                </div>
+                             </div>
+                        </div>
+                     </>
                  )}
                  
-                 <button className="btn-filter">Pesquisar</button>
+                 <button 
+                    className="btn-filter flex items-center justify-center gap-2 bg-gray-500 hover:bg-gray-600"
+                    onClick={clearFilters}
+                 >
+                    <FilterX size={18} />
+                    Limpar Filtros
+                 </button>
             </aside>
 
             <div className="table-section">
@@ -259,15 +443,10 @@ export default function ComprasPage() {
                                               >
                                                 <Eye size={18} />
                                               </button>
-                                              {/* 
-                                              <button className="p-1 text-red-500 hover:bg-red-50 rounded-md transition-colors opacity-50 cursor-not-allowed" title="Excluir (Em breve)">
-                                                 <Trash2 size={18} />
-                                              </button> 
-                                              */}
                                           </div>
                                         </td>
                                         <td className="whitespace-nowrap">
-                                            {compra.dataCompra ? new Date(compra.dataCompra).toLocaleDateString('pt-BR') : "-"}
+                                            {compra.dataCompra ? new Date(compra.dataCompra + 'T00:00:00').toLocaleDateString('pt-BR') : "-"}
                                         </td>
                                         <td className="whitespace-nowrap">
                                             {compra.fornecedor?.nome || "-"}
@@ -284,7 +463,7 @@ export default function ComprasPage() {
                             </tbody>
                         </table>
                     )}
-
+                    
                     {activeTab === 'fornecedores' && (
                        <table className="produtos-table">
                        <thead>
@@ -370,13 +549,6 @@ export default function ComprasPage() {
         compraId={selectedCompraId}
       />
 
-       {/* Confirm Delete Modal (Inline simple version or reusing component?) */}
-       {/* Let's skip the ModalConfirmacao import for now and use a simple confirm or add it if strictly required. 
-           User didn't strictly ask for 'ModalConfirmacao' but implied 'Editar/Excluir' working. 
-           I implemented the logic but missing the Modal UI part for delete confirmation.
-           I should actually copy the ModalConfirmacao usage from products page.
-       */}
-       
        {supplierToDelete && (
          <div className="modal-overlay" style={{zIndex: 50}}>
             <div className="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full mx-4">

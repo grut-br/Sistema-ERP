@@ -8,7 +8,7 @@ const LoteModel = sequelize.define('Lote', {
   idProduto: { type: DataTypes.INTEGER, allowNull: false, field: 'id_produto' },
   idCompra: { type: DataTypes.INTEGER, field: 'id_compra' },
   quantidade: { type: DataTypes.INTEGER, allowNull: false },
-  validade: { type: DataTypes.DATEONLY, allowNull: false },
+  validade: { type: DataTypes.DATEONLY, allowNull: true },
   custoUnitario: { type: DataTypes.DECIMAL(10, 2), allowNull: false, field: 'custo_unitario' },
 }, {
   tableName: 'lotes',

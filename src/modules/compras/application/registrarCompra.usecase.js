@@ -33,8 +33,8 @@ class RegistrarCompraUseCase {
     // 1. Validação de produtos e cálculo do total
     for (const item of itens) {
       // Validação dos novos campos obrigatórios
-      if (!item.idProduto || !item.quantidade || !item.custoUnitario || !item.validade) {
-        throw new Error('idProduto, quantidade, custoUnitario e validade são obrigatórios para todos os itens.');
+      if (!item.idProduto || !item.quantidade || !item.custoUnitario) {
+        throw new Error('idProduto, quantidade e custoUnitario são obrigatórios para todos os itens.');
       }
       
       const produto = await this.produtoRepository.buscarPorId(item.idProduto);

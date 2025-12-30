@@ -3,8 +3,8 @@ class ListarComprasUseCase {
     this.compraRepository = compraRepository;
   }
 
-  async execute() {
-    return this.compraRepository.listarTodas();
+  async execute(filters) {
+    return this.compraRepository.listarTodas(filters);
   }
 }
 

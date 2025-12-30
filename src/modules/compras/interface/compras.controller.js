@@ -46,7 +46,16 @@ class CompraController {
   // Novo método para buscar todos
   async getAll(req, res) {
     try {
-      const compras = await this.listarComprasUseCase.execute();
+      const filters = {
+        idFornecedor: req.query.idFornecedor,
+        notaFiscal: req.query.notaFiscal, // Specific NF filter
+        search: req.query.search,         // Unified Top bar search
+        idProduto: req.query.idProduto,
+        sort: req.query.sort,             // 'ASC' | 'DESC'
+        dataInicio: req.query.dataInicio,
+        dataFim: req.query.dataFim
+      };
+      const compras = await this.listarComprasUseCase.execute(filters);
       res.status(200).json(compras);
     } catch (error) {
       res.status(500).json({ error: error.message });

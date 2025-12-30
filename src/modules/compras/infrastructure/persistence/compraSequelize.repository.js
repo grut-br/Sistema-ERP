@@ -119,10 +119,57 @@ class CompraSequelizeRepository extends ICompraRepository {
     return CompraMapper.toDomain(compraModel);
   }
 
-  async listarTodas() {
+  async listarTodas(filters = {}) {
+    const { Op } = require('sequelize');
+    const where = {};
+    const include = [
+      { model: FornecedorModel } // Always include to show name and for search
+    ];
+
+    // 1. Unified Search (NF or Supplier Name)
+    if (filters.search) {
+      where[Op.or] = [
+        { notaFiscal: { [Op.like]: `%${filters.search}%` } },
+        { '$Fornecedor.nome$': { [Op.like]: `%${filters.search}%` } }
+      ];
+    }
+    
+    // 2. Specific NF Filter
+    if (filters.notaFiscal) {
+      where.notaFiscal = { [Op.like]: `%${filters.notaFiscal}%` };
+    }
+
+    // 3. Date Range (Fix)
+    if (filters.dataInicio || filters.dataFim) {
+      where.dataCompra = {};
+      if (filters.dataInicio) where.dataCompra[Op.gte] = filters.dataInicio;
+      if (filters.dataFim) where.dataCompra[Op.lte] = filters.dataFim;
+    }
+
+    // 4. Supplier ID Filter
+    if (filters.idFornecedor) {
+      where.idFornecedor = filters.idFornecedor;
+    }
+
+    // 5. Product Filter (Contains Product)
+    if (filters.idProduto) {
+      include.push({
+        model: LoteModel,
+        as: 'itens',
+        attributes: [], // We don't need to load the items here, just filter
+        where: { idProduto: filters.idProduto },
+        required: true // INNER JOIN to ensure only purchases with this product are returned
+      });
+    }
+
+    // 6. Sorting
+    const sortOrder = filters.sort === 'ASC' ? 'ASC' : 'DESC';
+
     const comprasModel = await CompraModel.findAll({
-      order: [['dataCompra', 'DESC']],
-      include: [{ model: FornecedorModel }] // Inclui fornecedor na lista
+      where,
+      order: [['dataCompra', sortOrder]],
+      include,
+      subQuery: false // Important when filtering by associated tables with limit/offset (though no pagination here yet)
     });
     return comprasModel.map(CompraMapper.toDomain);
   }
