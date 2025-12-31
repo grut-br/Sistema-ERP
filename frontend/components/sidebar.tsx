@@ -7,7 +7,6 @@ import { usePathname } from 'next/navigation'
 const menuItems = [
   { name: 'Home', icon: Home, href: '/' },
   { name: 'Vendas', icon: Tag, href: '/vendas' },
-  { name: 'Vender', icon: ShoppingCart, href: '/vender' },
   { name: 'Pedidos', icon: Package, href: '/pedidos' },
   { name: 'Produtos', icon: Grid, href: '/produtos' },
   { name: 'Compras', icon: ShoppingBag, href: '/compras' },

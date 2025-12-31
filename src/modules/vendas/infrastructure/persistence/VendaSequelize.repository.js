@@ -1,4 +1,5 @@
 const sequelize = require('../../../../shared/infra/database');
+const { Op } = require('sequelize');
 const VendaModel = require('./venda.model');
 const ItemVendaModel = require('./itemVenda.model');
 const PagamentoModel = require('./pagamento.model');
@@ -260,12 +261,44 @@ class VendaSequelizeRepository extends IVendaRepository {
     return VendaMapper.toDomain(vendaModel);
   }
 
-  // Método LISTAR TODAS corrigido
-  async listarTodas() {
+
+
+  // Método LISTAR TODAS corrigido com filtros
+  async listarTodas(filtros = {}) {
+    const where = {};
+    const whereCliente = {};
+
+    // Filtro por Data
+    if (filtros.dataInicio || filtros.dataFim) {
+      where.data_venda = {};
+      if (filtros.dataInicio) where.data_venda[Op.gte] = filtros.dataInicio;
+      if (filtros.dataFim) where.data_venda[Op.lte] = filtros.dataFim;
+    }
+
+    // Filtro por Status
+    if (filtros.status) {
+      where.status = filtros.status;
+    }
+
+    // Filtro por Nome do Cliente
+    if (filtros.clienteNome) {
+      whereCliente.nome = { [Op.like]: `%${filtros.clienteNome}%` };
+    }
+
+    // Filtro por ID (exato)
+    if (filtros.id) {
+       where.id = filtros.id;
+    }
+
     const vendasModel = await VendaModel.findAll({
+      where,
       order: [['data_venda', 'DESC']],
       include: [
-        { model: ClienteModel },
+        { 
+            model: ClienteModel,
+            where: Object.keys(whereCliente).length > 0 ? whereCliente : undefined,
+            required: Object.keys(whereCliente).length > 0
+        },
         { model: PagamentoModel, as: 'pagamentos' },
         { 
           model: ItemVendaModel, 

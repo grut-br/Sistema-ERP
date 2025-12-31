@@ -54,9 +54,19 @@ class VendaController {
     }
   }
 
-  async getAll(req, res) {
+    async getAll(req, res) {
     try {
-      const vendas = await this.listarVendasUseCase.execute();
+      const { dataInicio, dataFim, status, clienteNome, searchId } = req.query;
+      
+      const filtros = {
+        dataInicio,
+        dataFim,
+        status,
+        clienteNome,
+        id: searchId // Mapeia searchId para id no filtro
+      };
+
+      const vendas = await this.listarVendasUseCase.execute(filtros);
       res.status(200).json(vendas);
     } catch (error) {
       res.status(500).json({ error: error.message });

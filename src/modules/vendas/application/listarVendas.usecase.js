@@ -3,8 +3,8 @@ class ListarVendasUseCase {
     this.vendaRepository = vendaRepository;
   }
 
-  async execute() {
-    return this.vendaRepository.listarTodas();
+  async execute(filtros) {
+    return this.vendaRepository.listarTodas(filtros);
   }
 }
 
