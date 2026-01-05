@@ -106,8 +106,9 @@ class RegistrarVendaUseCase {
       itens: itensVendaParaSalvar,
       totalVenda: totalComDesconto, // Usa o total com desconto
       pagamentos, 
-      destinoTroco, // Pass change destination to entity
-      salvarTrocoCredito: false // Deprecated logic
+      destinoTroco,
+      descontoManual: descontoManual || 0,
+      descontoPontos: descontoFidelidade
     });
 
     return this.vendaRepository.salvar(novaVenda, {

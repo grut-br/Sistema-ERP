@@ -8,6 +8,9 @@ const VendaModel = sequelize.define('Venda', {
   idCliente: { type: DataTypes.INTEGER, field: 'id_cliente' },
   idUsuario: { type: DataTypes.INTEGER, field: 'id_usuario' },
   totalVenda: { type: DataTypes.DECIMAL(10, 2), allowNull: false, field: 'total_venda' },
+  descontoManual: { type: DataTypes.DECIMAL(10, 2), defaultValue: 0, field: 'desconto_manual' },
+  descontoPontos: { type: DataTypes.DECIMAL(10, 2), defaultValue: 0, field: 'desconto_pontos' },
+  creditoGerado: { type: DataTypes.DECIMAL(10, 2), defaultValue: 0, field: 'credito_gerado' },
   status: {
     type: DataTypes.STRING,
     allowNull: false,

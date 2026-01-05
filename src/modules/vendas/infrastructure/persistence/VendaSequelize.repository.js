@@ -38,11 +38,14 @@ const VendaMapper = {
       idCliente: model.idCliente,
       idUsuario: model.idUsuario,
       totalVenda: model.totalVenda,
-      dataVenda: model.data_venda, // Corrigido para data_venda do modelo
+      dataVenda: model.data_venda,
       status: model.status,
       itens: itens,
-      pagamentos: pagamentos, // Adiciona os pagamentos
-      cliente: model.cliente ? model.cliente.toJSON() : null // Adiciona cliente se existir
+      pagamentos: pagamentos,
+      cliente: model.cliente ? model.cliente.toJSON() : null,
+      descontoManual: parseFloat(model.descontoManual) || 0,
+      descontoPontos: parseFloat(model.descontoPontos) || 0,
+      creditoGerado: parseFloat(model.creditoGerado) || 0
     });
   }
 };
@@ -76,6 +79,8 @@ class VendaSequelizeRepository extends IVendaRepository {
         idCliente: venda.idCliente,
         idUsuario: venda.idUsuario,
         totalVenda: venda.totalVenda,
+        descontoManual: venda.descontoManual || 0,
+        descontoPontos: venda.descontoPontos || 0,
         status: 'CONCLUIDA',
       }, { transaction: t });
 

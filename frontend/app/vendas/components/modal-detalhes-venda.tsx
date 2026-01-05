@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { X, AlertTriangle } from "lucide-react"
+import { X, AlertTriangle, Tag, Coins, CreditCard, Gift } from "lucide-react"
 
 interface ModalDetalhesVendaProps {
   isOpen: boolean
@@ -59,6 +59,27 @@ export function ModalDetalhesVenda({ isOpen, onClose, vendaId, onCancelSuccess }
     }
   }
 
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0)
+  }
+
+  // Calcula o subtotal (antes de descontos)
+  const calcularSubtotal = () => {
+    if (!venda?.itens) return 0
+    return venda.itens.reduce((sum: number, item: any) => sum + (item.precoUnitario * item.quantidade), 0)
+  }
+
+  // Calcula o total de descontos
+  const calcularTotalDescontos = () => {
+    return (venda?.descontoManual || 0) + (venda?.descontoPontos || 0)
+  }
+
+  // Calcula o total pago
+  const calcularTotalPago = () => {
+    if (!venda?.pagamentos) return 0
+    return venda.pagamentos.reduce((sum: number, pag: any) => sum + (pag.valor || 0), 0)
+  }
+
   if (!isOpen) return null
 
   return (
@@ -90,7 +111,7 @@ export function ModalDetalhesVenda({ isOpen, onClose, vendaId, onCancelSuccess }
                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
                </div>
            ) : venda ? (
-               <div className="space-y-8">
+               <div className="space-y-6">
                    
                    {/* Cliente Section */}
                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
@@ -122,38 +143,108 @@ export function ModalDetalhesVenda({ isOpen, onClose, vendaId, onCancelSuccess }
                                    <tr key={idx}>
                                        <td className="p-3 font-medium text-gray-900">{item.produto?.nome || "Item desconhecido"}</td>
                                        <td className="p-3 text-right text-gray-600">{item.quantidade}</td>
-                                       <td className="p-3 text-right text-gray-600">
-                                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.precoUnitario)}
-                                       </td>
-                                       <td className="p-3 text-right font-semibold text-gray-900">
-                                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.precoUnitario * item.quantidade)}
-                                       </td>
+                                       <td className="p-3 text-right text-gray-600">{formatCurrency(item.precoUnitario)}</td>
+                                       <td className="p-3 text-right font-semibold text-gray-900">{formatCurrency(item.precoUnitario * item.quantidade)}</td>
                                    </tr>
                                ))}
                            </tbody>
                        </table>
+                       
+                       {/* Subtotal dos Itens */}
+                       <div className="flex justify-end mt-2 pr-3">
+                           <span className="text-sm text-gray-500">Subtotal dos Itens: </span>
+                           <span className="ml-2 text-sm font-semibold text-gray-700">{formatCurrency(calcularSubtotal())}</span>
+                       </div>
                    </div>
 
+                   {/* Descontos Section */}
+                   {calcularTotalDescontos() > 0 && (
+                       <div className="bg-amber-50 p-4 rounded-lg border border-amber-200">
+                           <h3 className="text-sm font-semibold text-amber-700 uppercase tracking-wider mb-3 flex items-center gap-2">
+                               <Tag size={16} />
+                               Descontos Aplicados
+                           </h3>
+                           <div className="space-y-2">
+                               {venda.descontoManual > 0 && (
+                                   <div className="flex justify-between items-center text-sm">
+                                       <span className="text-amber-800 flex items-center gap-2">
+                                           <Tag size={14} />
+                                           Desconto Manual
+                                       </span>
+                                       <span className="font-semibold text-amber-900">
+                                           - {formatCurrency(venda.descontoManual)}
+                                       </span>
+                                   </div>
+                               )}
+                               {venda.descontoPontos > 0 && (
+                                   <div className="flex justify-between items-center text-sm">
+                                       <span className="text-amber-800 flex items-center gap-2">
+                                           <Coins size={14} />
+                                           Desconto Fidelidade (Pontos)
+                                       </span>
+                                       <span className="font-semibold text-amber-900">
+                                           - {formatCurrency(venda.descontoPontos)}
+                                       </span>
+                                   </div>
+                               )}
+                               <div className="border-t border-amber-200 pt-2 mt-2 flex justify-between items-center">
+                                   <span className="text-sm font-medium text-amber-800">Total de Descontos</span>
+                                   <span className="font-bold text-amber-900">- {formatCurrency(calcularTotalDescontos())}</span>
+                               </div>
+                           </div>
+                       </div>
+                   )}
+
                    {/* Pagamentos Section */}
-                   <div className="grid grid-cols-2 gap-8">
+                   <div className="grid grid-cols-2 gap-6">
                        <div>
-                           <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Pagamento</h3>
+                           <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2">
+                               <CreditCard size={16} />
+                               Formas de Pagamento
+                           </h3>
                            <ul className="space-y-2">
                                {venda.pagamentos?.map((pag: any, idx: number) => (
                                    <li key={idx} className="flex justify-between text-sm p-2 bg-gray-50 rounded">
                                        <span className="font-medium text-gray-700">{pag.metodo}</span>
-                                       <span className="font-semibold text-gray-900">
-                                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(pag.valor)}
-                                       </span>
+                                       <span className="font-semibold text-gray-900">{formatCurrency(pag.valor)}</span>
                                    </li>
                                ))}
                            </ul>
+                           
+                           {/* Troco que virou crédito */}
+                           {venda.creditoGerado > 0 && (
+                               <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                                   <div className="flex justify-between items-center text-sm">
+                                       <span className="text-blue-800 flex items-center gap-2">
+                                           <Gift size={14} />
+                                           Troco convertido em Crédito
+                                       </span>
+                                       <span className="font-semibold text-blue-900">
+                                           + {formatCurrency(venda.creditoGerado)}
+                                       </span>
+                                   </div>
+                               </div>
+                           )}
                        </div>
                        
-                       <div className="flex flex-col items-end justify-center">
-                           <div className="text-sm text-gray-500 mb-1">Total Geral</div>
-                           <div className="text-3xl font-bold text-emerald-600">
-                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(venda.totalVenda)}
+                       <div className="flex flex-col items-end justify-end">
+                           <div className="text-right space-y-1">
+                               {calcularTotalDescontos() > 0 && (
+                                   <>
+                                       <div className="text-xs text-gray-400">Subtotal: {formatCurrency(calcularSubtotal())}</div>
+                                       <div className="text-xs text-amber-600">Descontos: - {formatCurrency(calcularTotalDescontos())}</div>
+                                   </>
+                               )}
+                               <div className="text-sm text-gray-500">Total da Venda</div>
+                               <div className="text-3xl font-bold text-emerald-600">
+                                   {formatCurrency(venda.totalVenda)}
+                               </div>
+                               {calcularTotalPago() > venda.totalVenda && (
+                                   <div className="text-xs text-blue-600">
+                                       Pago: {formatCurrency(calcularTotalPago())} 
+                                       (Troco: {formatCurrency(calcularTotalPago() - venda.totalVenda)})
+                                   </div>
+                               )}
                            </div>
                        </div>
                    </div>
@@ -198,7 +289,7 @@ export function ModalDetalhesVenda({ isOpen, onClose, vendaId, onCancelSuccess }
                     </button>
                 )
             ) : (
-                <div></div> // Spacer
+                <div></div>
             )}
 
             <button 

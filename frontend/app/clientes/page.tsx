@@ -335,7 +335,9 @@ export default function ClientesPage() {
                             <div className="font-bold text-gray-800 flex items-center gap-1">
                               {cliente.nome}
                               {cliente.aniversarianteDoMes && (
-                                <Cake size={14} className="text-pink-500" title="Aniversariante do mês!" />
+                                <span title="Aniversariante do mês!">
+                                  <Cake size={14} className="text-pink-500" />
+                                </span>
                               )}
                             </div>
                             <div className="text-sm text-gray-500">{cliente.cpf || '—'}</div>
@@ -407,12 +409,12 @@ export default function ClientesPage() {
       {showDeleteConfirm && clienteToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6">
-            <h3 className="text-xl font-bold text-gray-800 mb-4">Confirmar Exclusão</h3>
+            <h3 className="text-xl font-bold text-gray-800 mb-4 text-center">Confirmar Exclusão</h3>
             <p className="text-gray-600 mb-6">
               Tem certeza que deseja excluir o cliente <strong>{clienteToDelete.nome}</strong>?
               Esta ação não pode ser desfeita.
             </p>
-            <div className="flex justify-end gap-3">
+            <div className="flex justify-center gap-5">
               <Button
                 variant="outline"
                 onClick={() => { setShowDeleteConfirm(false); setClienteToDelete(null); }}
