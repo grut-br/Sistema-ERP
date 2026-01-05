@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { Sidebar } from "@/components/sidebar"
-import { Search, Trash2, Plus, ShoppingCart, CreditCard, ChevronLeft } from "lucide-react"
+import { Search, Trash2, Plus, ShoppingCart, CreditCard, ChevronLeft, TriangleAlert } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from 'next/link'
 import {
@@ -45,6 +45,11 @@ export default function NovaVendaPage() {
   const [qtd, setQtd] = useState(1)
   const [precoUnit, setPrecoUnit] = useState(0)
 
+  // -- Stock Alert Modal State --
+  const [showAlertEstoque, setShowAlertEstoque] = useState(false)
+  const [pendingItem, setPendingItem] = useState<any | null>(null)
+  const [estoqueInfo, setEstoqueInfo] = useState({ atual: 0, solicitado: 0 })
+
   useEffect(() => {
     fetchData()
   }, [])
@@ -77,20 +82,57 @@ export default function NovaVendaPage() {
         return
     }
 
+    const estoqueAtual = selectedProduto.estoque ?? 0
+    
+    // Verifica se tem estoque suficiente
+    if (qtd > estoqueAtual) {
+        // Abre modal de alerta
+        setEstoqueInfo({ atual: estoqueAtual, solicitado: qtd })
+        setPendingItem({
+            idProduto: selectedProduto.id,
+            nome: selectedProduto.nome,
+            quantidade: qtd,
+            precoUnitario: precoUnit,
+            subtotal: qtd * precoUnit,
+            semEstoque: true  // Flag para indicador visual
+        })
+        setShowAlertEstoque(true)
+        return
+    }
+
+    // Adiciona normalmente se tem estoque
     const newItem = {
         idProduto: selectedProduto.id,
         nome: selectedProduto.nome,
         quantidade: qtd,
         precoUnitario: precoUnit,
-        subtotal: qtd * precoUnit
+        subtotal: qtd * precoUnit,
+        semEstoque: false
     }
 
     setCart([...cart, newItem])
     
-    // Reset inputs but keep focus flow if possible (for now just reset)
+    // Reset inputs
     setSelectedProduto(null)
     setQtd(1)
     setPrecoUnit(0)
+  }
+
+  // Função para forçar adição do item sem estoque
+  const forcarAdicaoItem = () => {
+    if (pendingItem) {
+        setCart([...cart, pendingItem])
+        setSelectedProduto(null)
+        setQtd(1)
+        setPrecoUnit(0)
+    }
+    setShowAlertEstoque(false)
+    setPendingItem(null)
+  }
+
+  const cancelarAdicaoItem = () => {
+    setShowAlertEstoque(false)
+    setPendingItem(null)
   }
 
   const removeItem = (index: number) => {
@@ -99,9 +141,47 @@ export default function NovaVendaPage() {
     setCart(newCart)
   }
 
-  const subtotal = cart.reduce((acc, item) => acc + item.subtotal, 0)
+  // -- Client Financial Info --
+  const [clientFinancials, setClientFinancials] = useState({ limiteFiado: 0, pontos: 0, saldoCredito: 0 })
+  const [discountValue, setDiscountValue] = useState("")
+  const [discountType, setDiscountType] = useState<'MONEY' | 'PERCENT'>('MONEY')
+
+  // ... exisiting code ...
+
+  const handleSelectCliente = async (cliente: any) => {
+      setSelectedCliente(cliente)
+      setComboboxClienteOpen(false)
+      
+      // Fetch Financial Info
+      if (cliente) {
+          try {
+              const res = await fetch(`/api/clientes/${cliente.id}/info-financeira`)
+              if (res.ok) {
+                  const info = await res.json()
+                  setClientFinancials(info)
+              }
+          } catch (e) {
+              console.error(e)
+          }
+      }
+  }
+
+  // ... existing code ...
   
-  // -- Handlers for Checkout --
+  // Calculate Totals with Discount
+  const rawSubtotal = cart.reduce((acc, item) => acc + item.subtotal, 0)
+  
+  let discountAmount = 0
+  if (discountValue) {
+      const val = parseFloat(discountValue)
+      if (discountType === 'MONEY') discountAmount = val
+      else discountAmount = rawSubtotal * (val / 100)
+  }
+  
+  const totalWithDiscount = Math.max(0, rawSubtotal - discountAmount)
+
+  // ... render ...
+
   const handleFinalizeSuccess = () => {
     setCart([])
     setSelectedCliente(null)
@@ -148,8 +228,15 @@ export default function NovaVendaPage() {
                         <tbody className="divide-y divide-gray-50">
                             {cart.map((item, idx) => (
                                 <tr key={idx} className="hover:bg-gray-50">
-                                    <td className="p-3 font-medium text-gray-800">{item.nome}</td>
-                                    <td className="p-3 text-center">{item.quantidade}</td>
+                                    <td className="p-3 font-medium text-gray-800">
+                                        <div className="flex items-center gap-2">
+                                            {item.semEstoque && <TriangleAlert size={14} className="text-red-500" />}
+                                            {item.nome}
+                                        </div>
+                                    </td>
+                                    <td className={`p-3 text-center ${item.semEstoque ? 'text-red-600 font-bold' : ''}`}>
+                                        {item.quantidade}
+                                    </td>
                                     <td className="p-3 text-right">
                                         {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.precoUnitario)}
                                     </td>
@@ -172,7 +259,7 @@ export default function NovaVendaPage() {
                 <div className="flex justify-between items-end">
                     <div className="text-gray-400 text-sm">Total a Pagar</div>
                     <div className="text-4xl font-bold">
-                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(subtotal)}
+                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalWithDiscount)}
                     </div>
                 </div>
             </div>
@@ -184,7 +271,6 @@ export default function NovaVendaPage() {
             {/* 1. Cliente Selection */}
             <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
                 <h3 className="text-sm font-semibold text-gray-500 uppercase mb-3">Cliente</h3>
-                
                 <Popover open={comboboxClienteOpen} onOpenChange={setComboboxClienteOpen}>
                     <PopoverTrigger asChild>
                       <Button
@@ -203,10 +289,7 @@ export default function NovaVendaPage() {
                             <CommandGroup>
                             <CommandItem
                                 value="consumidor"
-                                onSelect={() => {
-                                    setSelectedCliente(null)
-                                    setComboboxClienteOpen(false)
-                                }}
+                                onSelect={() => handleSelectCliente({ id: null, nome: "Consumidor Final" })}
                             >
                                 Consumidor Final
                             </CommandItem>
@@ -214,10 +297,7 @@ export default function NovaVendaPage() {
                                 <CommandItem
                                 key={cliente.id}
                                 value={cliente.nome}
-                                onSelect={() => {
-                                    setSelectedCliente(cliente)
-                                    setComboboxClienteOpen(false)
-                                }}
+                                onSelect={() => handleSelectCliente(cliente)}
                                 >
                                 {cliente.nome}
                                 </CommandItem>
@@ -228,22 +308,28 @@ export default function NovaVendaPage() {
                     </PopoverContent>
                   </Popover>
 
-                  {selectedCliente && (
-                      <div className="grid grid-cols-2 gap-2 mt-4">
+                  {selectedCliente && selectedCliente.id && (
+                      <div className="grid grid-cols-3 gap-2 mt-4">
                           <div className="bg-blue-50 p-2 rounded border border-blue-100">
-                              <span className="text-xs text-blue-600 block">Limite Fiado</span>
-                              <span className="font-bold text-blue-800">
-                                  {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(selectedCliente.limiteFiado || 0)}
+                              <span className="text-[10px] text-blue-600 block uppercase">Limite Fiado</span>
+                              <span className="font-bold text-blue-800 text-sm">
+                                  {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(clientFinancials.limiteFiado)}
                               </span>
                           </div>
                           <div className="bg-purple-50 p-2 rounded border border-purple-100">
-                              <span className="text-xs text-purple-600 block">Pontos</span>
-                              <span className="font-bold text-purple-800">{selectedCliente.pontos || 0}</span>
+                              <span className="text-[10px] text-purple-600 block uppercase">Pontos</span>
+                              <span className="font-bold text-purple-800 text-sm">{clientFinancials.pontos}</span>
+                          </div>
+                           <div className="bg-emerald-50 p-2 rounded border border-emerald-100">
+                              <span className="text-[10px] text-emerald-600 block uppercase">Saldo Crédito</span>
+                              <span className="font-bold text-emerald-800 text-sm">
+                                  {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(clientFinancials.saldoCredito)}
+                              </span>
                           </div>
                       </div>
                   )}
             </div>
-            
+
             {/* 2. Add Product */}
             <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex-1 flex flex-col">
                  <h3 className="text-sm font-semibold text-gray-500 uppercase mb-3">Adicionar Item</h3>
@@ -319,26 +405,91 @@ export default function NovaVendaPage() {
                  </div>
             </div>
 
-            {/* 3. Finalize Action */}
+            {/* Discount Section */}
+            <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+                <h3 className="text-sm font-semibold text-gray-500 uppercase mb-3">Desconto</h3>
+                <div className="flex gap-2">
+                    <input 
+                        type="number" 
+                        placeholder="0.00"
+                        className="flex-1 p-2 border border-gray-200 rounded text-right font-medium"
+                        value={discountValue}
+                        onChange={e => setDiscountValue(e.target.value)}
+                    />
+                    <div className="flex bg-gray-100 rounded p-1">
+                        <button 
+                            className={`px-3 py-1 text-sm rounded ${discountType === 'PERCENT' ? 'bg-white shadow' : 'text-gray-500'}`}
+                            onClick={() => setDiscountType('PERCENT')}
+                        >%</button>
+                        <button 
+                             className={`px-3 py-1 text-sm rounded ${discountType === 'MONEY' ? 'bg-white shadow' : 'text-gray-500'}`}
+                             onClick={() => setDiscountType('MONEY')}
+                        >R$</button>
+                    </div>
+                </div>
+            </div>
+
+            {/* Finalize Button */}
             <Button 
-                className="h-20 bg-gray-900 hover:bg-black text-white text-xl font-bold shadow-lg rounded-xl"
+                className="h-20 bg-gray-900 hover:bg-black text-white text-xl font-bold shadow-lg rounded-xl flex justify-between px-6"
                 onClick={() => setIsCheckoutOpen(true)}
                 disabled={cart.length === 0}
             >
-                <div className="flex items-center gap-3">
-                    <CreditCard size={28} /> 
-                    <span>FINALIZAR VENDA</span>
+                <div className="flex flex-col items-start">
+                     <span className="text-xs font-normal text-gray-400">TOTAL</span>
+                     <span>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalWithDiscount)}</span>
+                </div>
+                <div className="flex items-center gap-2 text-base font-normal opacity-80">
+                    <span>FINALIZAR</span>
+                    <ChevronLeft  className="rotate-180" size={20} />
                 </div>
             </Button>
 
         </div>
       </div>
 
+      {/* MODAL DE ALERTA - ESTOQUE INSUFICIENTE */}
+      {showAlertEstoque && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-3 bg-red-100 rounded-full">
+                <TriangleAlert className="text-red-600" size={28} />
+              </div>
+              <h2 className="text-xl font-bold text-red-600">ESTOQUE INSUFICIENTE</h2>
+            </div>
+            
+            <p className="text-gray-700 mb-6">
+              <strong>Estoque atual:</strong> {estoqueInfo.atual} unidades<br />
+              <strong>Solicitado:</strong> {estoqueInfo.solicitado} unidades<br /><br />
+              Deseja forçar a venda e <span className="text-red-600 font-bold">negativar o estoque</span>?
+            </p>
+            
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={cancelarAdicaoItem}
+                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={forcarAdicaoItem}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 transition-colors"
+              >
+                VENDER MESMO ASSIM
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <ModalCheckout 
          isOpen={isCheckoutOpen}
          onClose={() => setIsCheckoutOpen(false)}
-         cartTotal={subtotal}
-         cliente={selectedCliente}
+         cartTotal={totalWithDiscount}
+         subtotalOriginal={rawSubtotal}
+         discountValue={discountAmount}
+         cliente={{...selectedCliente, ...clientFinancials}} 
          cartItems={cart}
          onSuccess={handleFinalizeSuccess}
       />

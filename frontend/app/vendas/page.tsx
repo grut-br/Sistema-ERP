@@ -214,7 +214,7 @@ export default function VendasPage() {
                                         {new Date(venda.dataVenda).toLocaleDateString('pt-BR')} {new Date(venda.dataVenda).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}
                                     </td>
                                     <td className="p-4 text-gray-700">
-                                        {venda.cliente ? venda.cliente.nome : <span className="text-gray-400 italic">Consumidor Final</span>}
+                                        {venda.cliente?.nome || <span className="text-gray-400 italic">Consumidor Final</span>}
                                     </td>
                                     <td className="p-4 text-gray-700 font-medium">
                                         {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(venda.totalVenda || 0)}

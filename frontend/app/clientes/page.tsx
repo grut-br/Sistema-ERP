@@ -1,552 +1,449 @@
 'use client'
 
 import { Sidebar } from '@/components/sidebar'
-import { Search, Download, Plus, MoreVertical, X } from 'lucide-react'
+import { Search, Eye, Edit, FilterX, Plus, Phone, Cake, Trophy, AlertCircle, CreditCard, CheckCircle, Trash2 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { useToast } from '@/hooks/use-toast'
-import './clientes.css'
 import { Pagination } from '@/components/Pagination'
+import { Button } from '@/components/ui/button'
+import { ModalPerfilCliente } from './components/ModalPerfilCliente'
+import { ModalCadastroCliente } from './components/ModalCadastroCliente'
+import './clientes.css'
 
-interface Client {
-  id?: number
+interface ClienteEnriquecido {
+  id: number
   nome: string
   cpf: string
-  dataNascimento: string
   telefone: string
   email: string
-  genero: string
-  logradouro: string
-  numero: string
-  bairro: string
-  cidade: string
-  estado: string
-  cep: string
-  complemento: string
+  dataNascimento: string
   limiteFiado: number
-}
-
-const initialFormState: Client = {
-  nome: '',
-  cpf: '',
-  dataNascimento: '',
-  telefone: '',
-  email: '',
-  genero: '',
-  logradouro: '',
-  numero: '',
-  bairro: '',
-  cidade: '',
-  estado: '',
-  cep: '',
-  complemento: '',
-  limiteFiado: 0
+  saldoPontos: number
+  saldoCredito: number
+  temPendencia: boolean
+  cidade: string
+  bairro: string
+  aniversarianteDoMes: boolean
 }
 
 export default function ClientesPage() {
-  const [showModal, setShowModal] = useState(false)
-  const [clients, setClients] = useState<Client[]>([])
-  const [formData, setFormData] = useState<Client>(initialFormState)
   const { toast } = useToast()
-  const [filters, setFilters] = useState({
-    debito: false,
-    credito: false,
-    recentes: false,
-    inativos: false,
-    aniversariantes: false,
-  })
-
-  const [errors, setErrors] = useState<Record<string, string>>({})
+  
+  // -- Data State --
+  const [clientes, setClientes] = useState<ClienteEnriquecido[]>([])
   const [isLoading, setIsLoading] = useState(false)
-
-  // Pagination State
+  
+  // -- Pagination State --
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
+  
+  // -- Filters State --
+  const [searchTerm, setSearchTerm] = useState('')
+  const [filterInadimplente, setFilterInadimplente] = useState(false)
+  const [filterComCredito, setFilterComCredito] = useState(false)
+  const [filterAniversariantes, setFilterAniversariantes] = useState(false)
+  
+  // -- Modal State --
+  const [showPerfilModal, setShowPerfilModal] = useState(false)
+  const [showCadastroModal, setShowCadastroModal] = useState(false)
+  const [selectedClienteId, setSelectedClienteId] = useState<number | null>(null)
+  const [editingCliente, setEditingCliente] = useState<ClienteEnriquecido | null>(null)
+
+  // -- Delete Confirmation State --
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [clienteToDelete, setClienteToDelete] = useState<ClienteEnriquecido | null>(null)
 
   useEffect(() => {
-    fetchClients()
+    fetchClientes()
   }, [])
 
-  const fetchClients = async () => {
+  // Debounce for fetch with filters
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchClientes()
+    }, 400)
+    return () => clearTimeout(timer)
+  }, [searchTerm, filterInadimplente, filterComCredito, filterAniversariantes])
+
+  const fetchClientes = async () => {
     try {
-      const response = await fetch('/api/clientes')
-      if (!response.ok) throw new Error('Falha ao buscar clientes')
-      const data = await response.json()
-      setClients(data)
-    } catch (error) {
-      console.error('Erro ao buscar clientes:', error)
-      toast({
-        title: "Erro",
-        description: "Não foi possível carregar a lista de clientes.",
-        variant: "destructive"
-      })
-    }
-  }
+      setIsLoading(true)
+      const params = new URLSearchParams()
+      
+      if (searchTerm) params.append('search', searchTerm)
+      if (filterInadimplente) params.append('inadimplente', 'true')
+      if (filterComCredito) params.append('comCredito', 'true')
+      if (filterAniversariantes) params.append('aniversariantes', 'true')
 
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {}
-
-    if (!formData.nome.trim()) {
-      newErrors.nome = 'O campo Nome não foi preenchido.'
-    }
-
-    if (!formData.email.trim()) {
-      newErrors.email = 'O campo E-mail não foi preenchido.'
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'Formato de E-mail inválido.'
-    }
-
-    // Check if limiteFiado is explicitly missing or invalid (though it defaults to 0 in state, user might clear it)
-    // Since it's a number input, empty string might be parsed as 0 or NaN depending on handler.
-    // Our handler: name === 'limiteFiado' ? parseFloat(value) || 0 : value
-    // So it will be 0 if empty.
-    // User said "limite fiado não foi prenchido". If it's 0, maybe they consider it filled?
-    // Or maybe they want to force a value > 0?
-    // "limite fiado não foi prenchido" implies it was left empty.
-    // If I want to enforce it, I should check if it was touched or if 0 is allowed.
-    // Let's assume 0 is allowed but if the user clears the input it might be an issue.
-    // However, with `parseFloat(value) || 0`, it's always a number.
-    // Let's check if the user wants it to be mandatory to *set* a limit.
-    // But usually 0 is a valid limit (no credit).
-    // The user said "o campo de limiti fiado não foi prenchido".
-    // Maybe I should change the initial state or the handler to allow undefined/empty string for validation purposes?
-    // For now, I'll assume if it's 0 it's fine, UNLESS the user explicitly wants it required.
-    // Actually, let's look at the request: "preenchi alguns campos e o campo de limiti fiado não foi prenchido e ao tentar salva ele não permita".
-    // This suggests it shouldn't be empty.
-    // I will treat it as required.
-
-    // To properly validate "empty", I might need to change the type of limiteFiado in formData to number | string to allow empty string.
-    // But for now, let's just check if it's valid.
-
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target
-    setFormData(prev => ({
-      ...prev,
-      [name]: name === 'limiteFiado' ? parseFloat(value) || 0 : value
-    }))
-    // Clear error when user types
-    if (errors[name]) {
-      setErrors(prev => {
-        const newErrors = { ...prev }
-        delete newErrors[name]
-        return newErrors
-      })
-    }
-  }
-
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault()
-
-    if (!validateForm()) {
-      toast({
-        title: "Erro de validação",
-        description: "Por favor, preencha os campos obrigatórios.",
-        variant: "destructive"
-      })
-      return
-    }
-
-    setIsLoading(true)
-    try {
-      const response = await fetch('/api/clientes', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Falha ao salvar cliente')
+      const response = await fetch(`/api/clientes?${params.toString()}`)
+      if (response.ok) {
+        setClientes(await response.json())
+      } else {
+        console.error("Erro ao buscar clientes")
+        toast({ title: "Erro", description: "Falha ao carregar clientes", variant: "destructive" })
       }
-
-      toast({
-        title: "Sucesso",
-        description: "Cliente cadastrado com sucesso!",
-      })
-
-      setShowModal(false)
-      setFormData(initialFormState)
-      setErrors({})
-      fetchClients()
-    } catch (error: any) {
-      console.error('Erro ao salvar cliente:', error)
-      toast({
-        title: "Erro",
-        description: error.message || "Erro ao salvar cliente.",
-        variant: "destructive"
-      })
+    } catch (e) {
+      console.error(e)
     } finally {
       setIsLoading(false)
     }
   }
 
-  const handleFilterChange = (filterName: keyof typeof filters) => {
-    setFilters(prev => ({ ...prev, [filterName]: !prev[filterName] }))
+  const clearFilters = () => {
+    setSearchTerm('')
+    setFilterInadimplente(false)
+    setFilterComCredito(false)
+    setFilterAniversariantes(false)
+    setCurrentPage(1)
   }
 
-  const handleCpfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let value = e.target.value.replace(/\D/g, '')
-    if (value.length > 11) value = value.slice(0, 11)
+  const handleOpenPerfil = (id: number) => {
+    setSelectedClienteId(id)
+    setShowPerfilModal(true)
+  }
 
-    if (value.length > 9) {
-      value = `${value.slice(0, 3)}.${value.slice(3, 6)}.${value.slice(6, 9)}-${value.slice(9)}`
-    } else if (value.length > 6) {
-      value = `${value.slice(0, 3)}.${value.slice(3, 6)}.${value.slice(6)}`
-    } else if (value.length > 3) {
-      value = `${value.slice(0, 3)}.${value.slice(3)}`
+  const handleOpenEditar = (cliente: ClienteEnriquecido) => {
+    setEditingCliente(cliente)
+    setShowCadastroModal(true)
+  }
+
+  const handleOpenNovo = () => {
+    setEditingCliente(null)
+    setShowCadastroModal(true)
+  }
+
+  const handleSaveSuccess = () => {
+    setShowCadastroModal(false)
+    setEditingCliente(null)
+    fetchClientes()
+    toast({ title: "Sucesso", description: "Cliente salvo com sucesso!" })
+  }
+
+  const handleDeleteClick = (cliente: ClienteEnriquecido) => {
+    setClienteToDelete(cliente)
+    setShowDeleteConfirm(true)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!clienteToDelete) return
+
+    try {
+      const response = await fetch(`/api/clientes/${clienteToDelete.id}`, { method: 'DELETE' })
+      
+      if (response.ok) {
+        toast({ title: "Sucesso", description: "Cliente excluído com sucesso!" })
+        fetchClientes()
+      } else {
+        const err = await response.json()
+        toast({ 
+          title: "Erro", 
+          description: err.error || "Não é possível excluir cliente com histórico financeiro.", 
+          variant: "destructive" 
+        })
+      }
+    } catch (e) {
+      console.error(e)
+      toast({ title: "Erro", description: "Erro de conexão", variant: "destructive" })
+    } finally {
+      setShowDeleteConfirm(false)
+      setClienteToDelete(null)
     }
-
-    e.target.value = value
-    handleInputChange(e)
   }
 
-  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let value = e.target.value.replace(/\D/g, '')
-    if (value.length > 11) value = value.slice(0, 11)
+  // Pagination logic
+  const totalPages = Math.ceil(clientes.length / itemsPerPage)
+  const currentDisplayItems = clientes.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  )
 
-    if (value.length > 7) {
-      value = `(${value.slice(0, 2)}) ${value.slice(2, 3)} ${value.slice(3, 7)}-${value.slice(7)}`
-    } else if (value.length > 3) {
-      value = `(${value.slice(0, 2)}) ${value.slice(2, 3)} ${value.slice(3)}`
-    } else if (value.length > 2) {
-      value = `(${value.slice(0, 2)}) ${value.slice(2)}`
+  // Helper: Format phone for WhatsApp link
+  const getWhatsAppLink = (phone: string) => {
+    if (!phone) return '#'
+    const cleanPhone = phone.replace(/\D/g, '')
+    return `https://wa.me/55${cleanPhone}`
+  }
+
+  // Helper: Format date
+  const formatDate = (dateStr: string) => {
+    if (!dateStr) return '—'
+    const date = new Date(dateStr)
+    return date.toLocaleDateString('pt-BR')
+  }
+
+  // Helper: Render status badge
+  const renderStatusBadge = (cliente: ClienteEnriquecido) => {
+    if (cliente.temPendencia) {
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700">
+          <AlertCircle size={12} />
+          INADIMPLENTE
+        </span>
+      )
     }
-
-    e.target.value = value
-    handleInputChange(e)
-  }
-
-  const handleCepChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let value = e.target.value.replace(/\D/g, '')
-    if (value.length > 8) value = value.slice(0, 8)
-
-    if (value.length > 5) {
-      value = `${value.slice(0, 5)}-${value.slice(5)}`
+    if (cliente.saldoCredito > 0) {
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-700">
+          <CreditCard size={12} />
+          CRÉDITO: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(cliente.saldoCredito)}
+        </span>
+      )
     }
-
-    e.target.value = value
-    handleInputChange(e)
-  }
-
-
-
-  // Pagination Logic
-  const totalPages = Math.ceil(clients.length / itemsPerPage)
-  const startIndex = (currentPage - 1) * itemsPerPage
-  const endIndex = startIndex + itemsPerPage
-  const currentClients = clients.slice(startIndex, endIndex)
-
-  const handlePageChange = (newPage: number) => {
-    if (newPage >= 1 && newPage <= totalPages) {
-      setCurrentPage(newPage)
-    }
-  }
-
-  const handleItemsPerPageChange = (items: number) => {
-    setItemsPerPage(items)
-    setCurrentPage(1) // Reset to first page when changing limit
+    return (
+      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700">
+        <CheckCircle size={12} />
+        EM DIA
+      </span>
+    )
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-gray-100">
       <Sidebar />
-
-      <main className="ml-48 flex-1">
+      <div className="flex-1 ml-[190px] p-8 transition-all">
         {/* Header */}
-        <div className="bg-white border-b border-gray-200 px-8 py-6">
-          <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-semibold text-gray-900">Clientes</h1>
-            <div className="relative flex-1 max-w-md mx-8">
-              <input
-                type="text"
-                placeholder="Procurar por nome"
-                className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl font-bold text-gray-800">Clientes</h1>
+          
+          <div className="flex gap-4 items-center">
+            <div className="relative w-72">
+              <input 
+                type="text" 
+                className="w-full pl-3 pr-10 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Buscar por Nome ou CPF" 
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
               />
-              <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <Search className="absolute right-3 top-2.5 h-5 w-5 text-gray-400" />
             </div>
+
+            <Button 
+              className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2"
+              onClick={handleOpenNovo}
+            >
+              <Plus size={18} />
+              Novo Cliente
+            </Button>
           </div>
         </div>
 
-        <div className="flex gap-6 p-8">
-          {/* Filters Panel */}
-          <div className="filters-panel">
-            <h2 className="filters-title">Filtros</h2>
-            <div className="filters-list">
-              <label className="filter-item">
-                <input
-                  type="checkbox"
-                  checked={filters.debito}
-                  onChange={() => handleFilterChange('debito')}
-                />
-                <span>Clientes com débito</span>
-              </label>
-
-              <label className="filter-item">
-                <input
-                  type="checkbox"
-                  checked={filters.credito}
-                  onChange={() => handleFilterChange('credito')}
-                />
-                <span>Clientes com crédito</span>
-              </label>
-
-              <label className="filter-item">
-                <input
-                  type="checkbox"
-                  checked={filters.recentes}
-                  onChange={() => handleFilterChange('recentes')}
-                />
-                <span>Clientes recentes</span>
-              </label>
-
-              <label className="filter-item">
-                <input
-                  type="checkbox"
-                  checked={filters.inativos}
-                  onChange={() => handleFilterChange('inativos')}
-                />
-                <span>Mostrar clientes inativos</span>
-              </label>
-
-              <label className="filter-item">
-                <input
-                  type="checkbox"
-                  checked={filters.aniversariantes}
-                  onChange={() => handleFilterChange('aniversariantes')}
-                />
-                <span>Aniversariantes</span>
-              </label>
+        <div className="flex gap-6 items-start">
+          {/* Sidebar de Filtros */}
+          <aside className="w-[280px] bg-white rounded-xl p-6 shadow-sm border border-gray-100 h-fit">
+            <h3 className="text-xl font-semibold mb-6 text-gray-800">Filtros</h3>
+            
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-3">Situação Financeira</label>
+              <div className="space-y-3">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    className="w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
+                    checked={filterInadimplente}
+                    onChange={(e) => setFilterInadimplente(e.target.checked)}
+                  />
+                  <span className="text-sm text-gray-700">Clientes Inadimplentes</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                    checked={filterComCredito}
+                    onChange={(e) => setFilterComCredito(e.target.checked)}
+                  />
+                  <span className="text-sm text-gray-700">Com Crédito em Loja</span>
+                </label>
+              </div>
             </div>
 
-            <button className="filter-search-btn">
-              Pesquisar
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-3">Datas Especiais</label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input 
+                  type="checkbox" 
+                  className="w-4 h-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500"
+                  checked={filterAniversariantes}
+                  onChange={(e) => setFilterAniversariantes(e.target.checked)}
+                />
+                <span className="text-sm text-gray-700 flex items-center gap-1">
+                  <Cake size={14} className="text-pink-500" />
+                  Aniversariantes do Mês
+                </span>
+              </label>
+            </div>
+             
+            <button 
+              className="w-full py-2.5 bg-gray-500 hover:bg-gray-600 text-white rounded-lg font-medium flex items-center justify-center gap-2 transition-colors"
+              onClick={clearFilters}
+            >
+              <FilterX size={18} />
+              Limpar Filtros
             </button>
-          </div>
+          </aside>
 
-          {/* Main Content - Table */}
-          <div className="flex-1">
-            <div className="clientes-table-container">
-              {/* Table Header with Actions */}
-              <div className="table-header">
-                <h2 className="table-title">Clientes</h2>
-                <div className="table-actions">
-                  <button className="btn-export">
-                    <Download className="w-4 h-4" />
-                    Exportar
-                  </button>
-                  <button className="btn-add" onClick={() => setShowModal(true)}>
-                    <Plus className="w-4 h-4" />
-                    Adicionar
-                  </button>
-                </div>
-              </div>
-
-              {/* Data Table */}
-              <div className="table-wrapper">
-                <table className="clientes-table">
-                  <thead>
-                    <tr>
-                      <th>Ação</th>
-                      <th>Nome</th>
-                      <th>Telefone</th>
-                      <th>E-mail</th>
-                      <th>Endereço</th>
-                      <th>Limite de Fiado</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {currentClients.map((client) => (
-                      <tr key={client.id}>
-                        <td>
-                          <button className="action-btn">
-                            <MoreVertical className="w-4 h-4" />
+          {/* Tabela */}
+          <div className="flex-1 bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-emerald-500 text-white">
+                  <tr>
+                    <th className="p-4 text-center font-bold">Ações</th>
+                    <th className="p-4 text-left font-bold">Cliente</th>
+                    <th className="p-4 text-left font-bold">Contato</th>
+                    <th className="p-4 text-center font-bold">Nascimento</th>
+                    <th className="p-4 text-center font-bold">Fidelidade</th>
+                    <th className="p-4 text-center font-bold">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {isLoading ? (
+                    <tr><td colSpan={6} className="text-center py-8 text-gray-500">Carregando...</td></tr>
+                  ) : currentDisplayItems.length === 0 ? (
+                    <tr><td colSpan={6} className="text-center py-8 text-gray-500">Nenhum cliente encontrado</td></tr>
+                  ) : currentDisplayItems.map((cliente) => (
+                    <tr key={cliente.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                      {/* Ações */}
+                      <td className="p-4 text-center">
+                        <div className="flex justify-center gap-1">
+                          <button 
+                            className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-md transition-colors"
+                            title="Ver Perfil"
+                            onClick={() => handleOpenPerfil(cliente.id)}
+                          >
+                            <Eye size={18} />
                           </button>
-                        </td>
-                        <td>{client.nome}</td>
-                        <td>{client.telefone}</td>
-                        <td>{client.email}</td>
-                        <td>{client.logradouro}, {client.numero}</td>
-                        <td>R$ {Number(client.limiteFiado).toFixed(2)}</td>
-                      </tr>
-                    ))}
-                    {clients.length === 0 && (
-                      <tr>
-                        <td colSpan={6} className="text-center py-4">Nenhum cliente encontrado</td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                          <button 
+                            className="p-1.5 text-gray-500 hover:bg-gray-100 rounded-md transition-colors"
+                            title="Editar"
+                            onClick={() => handleOpenEditar(cliente)}
+                          >
+                            <Edit size={18} />
+                          </button>
+                          <button 
+                            className="p-1.5 text-red-500 hover:bg-red-50 rounded-md transition-colors"
+                            title="Excluir"
+                            onClick={() => handleDeleteClick(cliente)}
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
+                      </td>
+                      {/* Cliente */}
+                      <td className="p-4">
+                        <div className="flex items-center gap-2">
+                          <div>
+                            <div className="font-bold text-gray-800 flex items-center gap-1">
+                              {cliente.nome}
+                              {cliente.aniversarianteDoMes && (
+                                <Cake size={14} className="text-pink-500" title="Aniversariante do mês!" />
+                              )}
+                            </div>
+                            <div className="text-sm text-gray-500">{cliente.cpf || '—'}</div>
+                          </div>
+                        </div>
+                      </td>
+                      
+                      {/* Contato */}
+                      <td className="p-4">
+                        <div className="flex flex-col gap-1">
+                          {cliente.telefone && (
+                            <a 
+                              href={getWhatsAppLink(cliente.telefone)} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-sm text-gray-700 hover:text-green-600 flex items-center gap-1"
+                            >
+                              <Phone size={14} className="text-green-500" />
+                              {cliente.telefone}
+                            </a>
+                          )}
+                          <span className="text-sm text-gray-500">{cliente.email || '—'}</span>
+                        </div>
+                      </td>
+                      
+                      {/* Nascimento */}
+                      <td className="p-4 text-center">
+                        <span className="text-sm text-gray-700">
+                          {formatDate(cliente.dataNascimento)}
+                        </span>
+                      </td>
+                      
+                      {/* Fidelidade */}
+                      <td className="p-4 text-center">
+                        {cliente.saldoPontos > 0 ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-purple-100 text-purple-700">
+                            <Trophy size={12} />
+                            {cliente.saldoPontos} pts
+                          </span>
+                        ) : (
+                          <span className="text-sm text-gray-400">—</span>
+                        )}
+                      </td>
+                      
+                      {/* Status */}
+                      <td className="p-4 text-center">
+                        {renderStatusBadge(cliente)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
 
-              {/* Pagination */}
-              <Pagination
+            <div className="p-4 border-t border-gray-100">
+              <Pagination 
                 currentPage={currentPage}
                 totalPages={totalPages}
                 itemsPerPage={itemsPerPage}
-                onPageChange={handlePageChange}
-                onItemsPerPageChange={handleItemsPerPageChange}
+                onPageChange={setCurrentPage}
+                onItemsPerPageChange={(n) => { setItemsPerPage(n); setCurrentPage(1); }}
               />
             </div>
           </div>
         </div>
-      </main>
+      </div>
 
-      {/* Add Client Modal */}
-      {showModal && (
-        <div className="modal-overlay" onClick={() => setShowModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <button className="modal-close" onClick={() => setShowModal(false)}>
-              <X className="w-5 h-5" />
-            </button>
-
-            <form className="client-form" onSubmit={handleSave}>
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Nome completo <span className="text-red-500">*</span></label>
-                  <input
-                    name="nome"
-                    value={formData.nome}
-                    onChange={handleInputChange}
-                    type="text"
-                    placeholder="João Pedro Silva"
-                    className={errors.nome ? 'border-red-500 focus:ring-red-500' : ''}
-                  />
-                  {errors.nome && <span className="text-xs text-red-500 mt-1">{errors.nome}</span>}
-                </div>
-                <div className="form-group">
-                  <label>CPF</label>
-                  <input name="cpf" value={formData.cpf} onChange={handleCpfChange} type="text" placeholder="000.000.000-00" maxLength={14} />
-                </div>
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Data de Nascimento</label>
-                  <input name="dataNascimento" value={formData.dataNascimento} onChange={handleInputChange} type="date" placeholder="dd/mm/aaaa" />
-                </div>
-                <div className="form-group" style={{ flex: 0.7 }}>
-                  <label>Número de Telefone</label>
-                  <input name="telefone" value={formData.telefone} onChange={handlePhoneChange} type="text" placeholder="(99) 9 9999-9999" maxLength={16} />
-                </div>
-                <div className="form-group" style={{ flex: 0.85 }}>
-                  <label>E-mail <span className="text-red-500">*</span></label>
-                  <input
-                    name="email"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    type="email"
-                    placeholder="joao.pedro@gmail.com"
-                    className={errors.email ? 'border-red-500 focus:ring-red-500' : ''}
-                  />
-                  {errors.email && <span className="text-xs text-red-500 mt-1">{errors.email}</span>}
-                </div>
-                <div className="form-group form-group-small">
-                  <label>Gênero</label>
-                  <select name="genero" value={formData.genero} onChange={handleInputChange}>
-                    <option value="">Selecione</option>
-                    <option value="MASCULINO">Masculino</option>
-                    <option value="FEMININO">Feminino</option>
-                    <option value="OUTRO">Outro</option>
-                    <option value="NAO_INFORMAR">Prefiro não dizer</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Endereço (Logradouro)</label>
-                  <input name="logradouro" value={formData.logradouro} onChange={handleInputChange} type="text" placeholder="Av. São Paulo..." />
-                </div>
-                <div className="form-group" style={{ maxWidth: '150px' }}>
-                  <label>Número</label>
-                  <input name="numero" value={formData.numero} onChange={handleInputChange} type="text" />
-                </div>
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Bairro</label>
-                  <input name="bairro" value={formData.bairro} onChange={handleInputChange} type="text" />
-                </div>
-                <div className="form-group form-group-small">
-                  <label>Cep</label>
-                  <input name="cep" value={formData.cep} onChange={handleCepChange} type="text" placeholder="00000-000" maxLength={9} />
-                </div>
-                <div className="form-group">
-                  <label>Cidade</label>
-                  <input name="cidade" value={formData.cidade} onChange={handleInputChange} type="text" />
-                </div>
-                <div className="form-group form-group-small">
-                  <label>UF</label>
-                  <select name="estado" value={formData.estado} onChange={handleInputChange}>
-                    <option value="">UF</option>
-                    <option value="AC">AC</option>
-                    <option value="AL">AL</option>
-                    <option value="AP">AP</option>
-                    <option value="AM">AM</option>
-                    <option value="BA">BA</option>
-                    <option value="CE">CE</option>
-                    <option value="DF">DF</option>
-                    <option value="ES">ES</option>
-                    <option value="GO">GO</option>
-                    <option value="MA">MA</option>
-                    <option value="MT">MT</option>
-                    <option value="MS">MS</option>
-                    <option value="MG">MG</option>
-                    <option value="PA">PA</option>
-                    <option value="PB">PB</option>
-                    <option value="PR">PR</option>
-                    <option value="PE">PE</option>
-                    <option value="PI">PI</option>
-                    <option value="RJ">RJ</option>
-                    <option value="RN">RN</option>
-                    <option value="RS">RS</option>
-                    <option value="RO">RO</option>
-                    <option value="RR">RR</option>
-                    <option value="SC">SC</option>
-                    <option value="SP">SP</option>
-                    <option value="SE">SE</option>
-                    <option value="TO">TO</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Complemento</label>
-                  <input name="complemento" value={formData.complemento} onChange={handleInputChange} type="text" />
-                </div>
-                <div className="form-group">
-                  <label>Limite de Fiado <span className="text-red-500">*</span></label>
-                  <input
-                    name="limiteFiado"
-                    value={formData.limiteFiado}
-                    onChange={handleInputChange}
-                    type="number"
-                    step="0.01"
-                    className={errors.limiteFiado ? 'border-red-500 focus:ring-red-500' : ''}
-                  />
-                  {errors.limiteFiado && <span className="text-xs text-red-500 mt-1">{errors.limiteFiado}</span>}
-                </div>
-              </div>
-
-              <div className="form-actions">
-                <button type="button" className="btn-cancel" onClick={() => setShowModal(false)}>
-                  Cancelar
-                </button>
-                <button type="submit" className="btn-save" disabled={isLoading}>
-                  {isLoading ? 'Salvando...' : 'Salvar'}
-                </button>
-              </div>
-            </form>
+      {/* Modal de Confirmação de Exclusão */}
+      {showDeleteConfirm && clienteToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6">
+            <h3 className="text-xl font-bold text-gray-800 mb-4">Confirmar Exclusão</h3>
+            <p className="text-gray-600 mb-6">
+              Tem certeza que deseja excluir o cliente <strong>{clienteToDelete.nome}</strong>?
+              Esta ação não pode ser desfeita.
+            </p>
+            <div className="flex justify-end gap-3">
+              <Button
+                variant="outline"
+                onClick={() => { setShowDeleteConfirm(false); setClienteToDelete(null); }}
+              >
+                Cancelar
+              </Button>
+              <Button
+                className="bg-red-600 hover:bg-red-700 text-white"
+                onClick={handleConfirmDelete}
+              >
+                Excluir
+              </Button>
+            </div>
           </div>
         </div>
       )}
+
+      {/* Modal de Perfil */}
+      <ModalPerfilCliente
+        isOpen={showPerfilModal}
+        onClose={() => setShowPerfilModal(false)}
+        clienteId={selectedClienteId}
+      />
+
+      {/* Modal de Cadastro/Edição */}
+      <ModalCadastroCliente
+        isOpen={showCadastroModal}
+        onClose={() => { setShowCadastroModal(false); setEditingCliente(null); }}
+        cliente={editingCliente}
+        onSuccess={handleSaveSuccess}
+      />
     </div>
   )
 }

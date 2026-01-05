@@ -1,18 +1,28 @@
-class QuitarFiadoUseCase {
-  constructor(clienteRepository, fiadoRepository) {
-    this.clienteRepository = clienteRepository;
-    this.fiadoRepository = fiadoRepository; // Futuro
+/**
+ * BuscarHistoricoComprasUseCase
+ * Retorna as últimas vendas realizadas para um cliente específico
+ */
+class BuscarHistoricoComprasUseCase {
+  constructor(vendaRepository) {
+    this.vendaRepository = vendaRepository;
   }
 
-  async execute({ fiadoId, valorPago }) {
-    // Lógica futura:
-    // 1. Buscar o registro de fiado pelo ID.
-    // 2. Abater o valor pago do total da dívida.
-    // 3. Marcar como 'quitado' se o valor for zerado.
-    console.log(`Quitando ${valorPago} da dívida ${fiadoId}.`);
-    // Placeholder:
-    return { success: true, message: 'Funcionalidade a ser implementada.' };
+  /**
+   * Busca o histórico de compras de um cliente
+   * @param {number} clienteId - ID do cliente
+   * @param {number} limite - Quantidade máxima de vendas a retornar (default: 5)
+   * @returns {Array} Lista de vendas com data, valor e status
+   */
+  async execute(clienteId, limite = 5) {
+    const vendas = await this.vendaRepository.buscarPorClienteId(clienteId, limite);
+    
+    return vendas.map(venda => ({
+      id: venda.id,
+      dataVenda: venda.dataVenda,
+      totalVenda: venda.totalVenda,
+      status: venda.status
+    }));
   }
 }
 
-module.exports = QuitarFiadoUseCase;
+module.exports = BuscarHistoricoComprasUseCase;

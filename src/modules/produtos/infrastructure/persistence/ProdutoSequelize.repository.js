@@ -67,7 +67,8 @@ class ProdutoSequelizeRepository extends IProdutoRepository {
       include: [
         { model: CategoriaModel, as: 'categoria' },
         { model: FabricanteModel, as: 'fabricante' },
-        { model: LoteModel, as: 'lotes', where: { quantidade: { [Op.gt]: 0 } }, required: false }
+        // Inclui TODOS os lotes (inclusive negativos) para calcular estoque real
+        { model: LoteModel, as: 'lotes', required: false }
       ]
     });
     
@@ -84,7 +85,8 @@ class ProdutoSequelizeRepository extends IProdutoRepository {
       include: [
         { model: CategoriaModel, as: 'categoria' },
         { model: FabricanteModel, as: 'fabricante' },
-        { model: LoteModel, as: 'lotes', where: { quantidade: { [Op.gt]: 0 } },  required: false  }
+        // Inclui TODOS os lotes (inclusive negativos) para calcular estoque real
+        { model: LoteModel, as: 'lotes', required: false }
       ],
       order: [['nome', 'ASC']]
     });

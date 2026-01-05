@@ -20,7 +20,7 @@ const VendaModel = sequelize.define('Venda', {
 });
 
 // Associações
-VendaModel.belongsTo(ClienteModel, { foreignKey: 'idCliente' });
+VendaModel.belongsTo(ClienteModel, { foreignKey: 'idCliente', as: 'cliente' });
 // VendaModel.belongsTo(UsuarioModel, { foreignKey: 'idUsuario' }); // Futuro
 
 module.exports = VendaModel;

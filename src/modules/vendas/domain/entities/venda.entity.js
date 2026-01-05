@@ -1,5 +1,5 @@
 class Venda {
-  constructor({ id, idCliente, idUsuario, metodoPagamento, itens, totalVenda, dataVenda, status, pagamentos }) {
+  constructor({ id, idCliente, idUsuario, metodoPagamento, itens, totalVenda, dataVenda, status, pagamentos, cliente, destinoTroco }) {
     this.id = id;
     this.idCliente = idCliente;
     this.idUsuario = idUsuario;
@@ -9,6 +9,8 @@ class Venda {
     this.dataVenda = dataVenda;
     this.status = status;
     this.pagamentos = pagamentos || []; 
+    this.cliente = cliente || null;
+    this.destinoTroco = destinoTroco || null;
   }
 }
 

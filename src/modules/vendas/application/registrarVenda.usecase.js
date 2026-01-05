@@ -3,6 +3,7 @@ const ItemVenda = require('../domain/entities/itemVenda.entity');
 
 // Importações dos outros módulos
 const AdicionarPontosUseCase = require('../../fidelizacao/application/adicionarPontos.usecase');
+const ResgatarPontosUseCase = require('../../fidelizacao/application/resgatarPontos.usecase');
 const FidelizacaoSequelizeRepository = require('../../fidelizacao/infrastructure/persistence/FidelizacaoSequelize.repository');
 const CriarLancamentoUseCase = require('../../financeiro/application/criarLancamento.usecase');
 const LancamentoSequelizeRepository = require('../../financeiro/infrastructure/persistence/LancamentoSequelize.repository');
@@ -26,12 +27,13 @@ class RegistrarVendaUseCase {
     
     this.criarLancamentoUseCase = new CriarLancamentoUseCase(lancamentoRepo);
     this.adicionarPontosUseCase = new AdicionarPontosUseCase(fidelizacaoRepo);
+    this.resgatarPontosUseCase = new ResgatarPontosUseCase(fidelizacaoRepo);
     this.criarNotificacaoUseCase = new CriarNotificacaoUseCase(notificacaoRepo);
     this.adicionarCreditoUseCase = new AdicionarCreditoUseCase(creditoRepo);
     this.usarCreditoUseCase = new UsarCreditoUseCase(creditoRepo);
   }
 
-  // Função auxiliar para validar estoque (Recursiva para Kits)
+  // Função auxiliar para buscar produto (Recursiva para Kits) - NÃO BLOQUEIA ESTOQUE
   async validarEstoque(idProduto, quantidadeNecessaria) {
     const produto = await this.produtoRepository.buscarPorId(idProduto);
     if (!produto) throw new Error(`Produto com ID ${idProduto} não encontrado.`);
@@ -43,24 +45,24 @@ class RegistrarVendaUseCase {
         // Valida o componente multiplicando pela quantidade necessária
         await this.validarEstoque(comp.idProduto, quantidadeNecessaria * comp.quantidadeNecessaria);
       }
-    } else {
-      // SE FOR PRODUTO FÍSICO: Valida os lotes
-      const lotesDisponiveis = await this.produtoRepository.buscarLotesDisponiveisPorProduto(idProduto);
-      const estoqueTotal = lotesDisponiveis.reduce((soma, lote) => soma + lote.quantidade, 0);
-
-      if (estoqueTotal < quantidadeNecessaria) {
-        throw new Error(`Estoque insuficiente para o produto "${produto.nome}". Disponível: ${estoqueTotal}, Pedido: ${quantidadeNecessaria}`);
-      }
     }
+    // ESTOQUE NEGATIVO: Não bloqueia mais se estoqueTotal < quantidadeNecessaria
+    // A baixa real é feita no repository com lógica FEFO flexível
     return produto; // Retorna o produto para usarmos o preço depois
   }
 
-  async execute({ idCliente, idUsuario, itens, pagamentos }) {
+  async execute({ idCliente, idUsuario, itens, pagamentos, destinoTroco, pontosUsados, descontoManual }) {
     if (!pagamentos || pagamentos.length === 0) {
       throw new Error('É necessário fornecer pelo menos um método de pagamento.');
     }
     
     let totalVenda = 0;
+    let descontoFidelidade = 0;
+    
+    // Calcula desconto de fidelidade (R$ 0.05 por ponto)
+    if (pontosUsados && pontosUsados > 0 && idCliente) {
+      descontoFidelidade = pontosUsados * 0.05;
+    }
     const itensVendaParaSalvar = [];
 
     // 1. Validação de Estoque e Cálculo de Preço
@@ -77,7 +79,12 @@ class RegistrarVendaUseCase {
       }));
     }
 
-    // 2. Processamento de Pagamentos
+    // 2. Aplica os descontos (fidelidade + manual, limitado ao total)
+    const descontoTotal = descontoFidelidade + (descontoManual || 0);
+    const descontoReal = Math.min(descontoTotal, totalVenda);
+    const totalComDesconto = Math.max(0, totalVenda - descontoReal);
+
+    // 3. Processamento de Pagamentos
     const resultadosPagamento = []; 
     for (const pag of pagamentos) {
         const processador = PagamentoFactory.criar(pag.metodo);
@@ -88,26 +95,31 @@ class RegistrarVendaUseCase {
     }
 
     const totalPago = pagamentos.reduce((sum, pag) => sum + pag.valor, 0);
-    if (totalPago.toFixed(2) !== totalVenda.toFixed(2)) {
-      throw new Error('A soma dos pagamentos não corresponde ao total da venda.');
+    // Allow overpayment (Change) but ensure it's not less than total WITH DISCOUNT
+    if (totalPago < totalComDesconto - 0.01) { // 0.01 tolerance for Float precision
+      throw new Error(`Pagamento insuficiente. Total: ${totalComDesconto.toFixed(2)}, Pago: ${totalPago.toFixed(2)}`);
     }
 
     const novaVenda = new Venda({
       idCliente,
       idUsuario,
       itens: itensVendaParaSalvar,
-      totalVenda,
+      totalVenda: totalComDesconto, // Usa o total com desconto
       pagamentos, 
+      destinoTroco, // Pass change destination to entity
+      salvarTrocoCredito: false // Deprecated logic
     });
 
     return this.vendaRepository.salvar(novaVenda, {
       adicionarPontosUseCase: this.adicionarPontosUseCase,
+      resgatarPontosUseCase: this.resgatarPontosUseCase,
       criarLancamentoUseCase: this.criarLancamentoUseCase, 
       criarNotificacaoUseCase: this.criarNotificacaoUseCase,
       produtoRepository: this.produtoRepository,
       adicionarCreditoUseCase: this.adicionarCreditoUseCase,
       usarCreditoUseCase: this.usarCreditoUseCase,
-      resultadosPagamento: resultadosPagamento 
+      resultadosPagamento: resultadosPagamento,
+      pontosUsados: pontosUsados || 0
     });
   }
 }

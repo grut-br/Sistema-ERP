@@ -42,7 +42,7 @@ const VendaMapper = {
       status: model.status,
       itens: itens,
       pagamentos: pagamentos, // Adiciona os pagamentos
-      cliente: model.Cliente ? model.Cliente.toJSON() : null // Adiciona cliente se existir
+      cliente: model.cliente ? model.cliente.toJSON() : null // Adiciona cliente se existir
     });
   }
 };
@@ -54,12 +54,14 @@ class VendaSequelizeRepository extends IVendaRepository {
     // Desestrutura todos os casos de uso
     const { 
       adicionarPontosUseCase, 
+      resgatarPontosUseCase,
       criarLancamentoUseCase, 
       criarNotificacaoUseCase, 
       produtoRepository,
       resultadosPagamento,
       usarCreditoUseCase,
-      adicionarCreditoUseCase
+      adicionarCreditoUseCase,
+      pontosUsados
     } = useCases;
     
     if (!produtoRepository) {
@@ -108,17 +110,10 @@ class VendaSequelizeRepository extends IVendaRepository {
             await processarBaixaDeEstoque(comp.idProduto, quantidadeBaixar * comp.quantidadeNecessaria);
           }
         } else {
-          // --- SE FOR PRODUTO FÍSICO: Roda a lógica FEFO ---
           const lotes = await produtoRepository.buscarLotesDisponiveisPorProduto(idProduto, { transaction: t });
           let qtdRestante = quantidadeBaixar;
 
-          // Valida estoque total antes de começar
-          const estoqueTotal = lotes.reduce((acc, l) => acc + l.quantidade, 0);
-          if (estoqueTotal < qtdRestante) {
-             throw new Error(`Estoque insuficiente para o produto "${produto.nome}" (ID ${idProduto}).`);
-          }
-
-          // Baixa nos lotes
+          // Baixa nos lotes disponíveis (FEFO - First Expire First Out)
           for (const lote of lotes) {
             if (qtdRestante === 0) break;
             
@@ -136,15 +131,53 @@ class VendaSequelizeRepository extends IVendaRepository {
             );
           }
           
-          // --- GATILHO DE ESTOQUE BAIXO (Dentro da recursão para funcionar com Kits) ---
-          const lotesAtualizados = await produtoRepository.buscarLotesDisponiveisPorProduto(idProduto, { transaction: t });
-          const estoqueFinal = lotesAtualizados.reduce((soma, lote) => soma + lote.quantidade, 0);
-          const LIMITE_ESTOQUE_BAIXO = 3; // Você pode parametrizar isso depois
+          // --- LÓGICA DE ESTOQUE NEGATIVO ---
+          // Se ainda restar quantidade pendente, negativar o último lote ou criar um novo
+          if (qtdRestante > 0) {
+            // Busca todos os lotes (incluindo zerados) para pegar o mais recente
+            const todosLotes = await LoteModel.findAll({
+              where: { idProduto },
+              order: [['id', 'DESC']],
+              transaction: t
+            });
+            
+            let loteParaNegativar = todosLotes[0]; // Último lote criado
+            
+            if (!loteParaNegativar) {
+              // Cria um "Lote Inicial" se não existir nenhum
+              loteParaNegativar = await LoteModel.create({
+                idProduto,
+                quantidade: 0,
+                validade: null,
+                custoUnitario: 0
+              }, { transaction: t });
+            }
+            
+            // Subtrai a quantidade pendente (permite valor negativo)
+            await LoteModel.update(
+              { quantidade: sequelize.literal(`quantidade - ${qtdRestante}`) },
+              { where: { id: loteParaNegativar.id }, transaction: t }
+            );
+          }
+          
+          // --- GATILHO DE ESTOQUE NEGATIVO/BAIXO ---
+          // Busca todos os lotes para calcular estoque real (inclui negativos)
+          const todosLotesAtualizados = await LoteModel.findAll({
+            where: { idProduto },
+            transaction: t
+          });
+          const estoqueFinal = todosLotesAtualizados.reduce((soma, lote) => soma + lote.quantidade, 0);
+          const LIMITE_ESTOQUE_BAIXO = 3;
 
           if (criarNotificacaoUseCase && estoqueFinal <= LIMITE_ESTOQUE_BAIXO) {
+            // Usa ESTOQUE_BAIXO para ambos os casos (valor negativo é indicado na mensagem)
+            const msgNotif = estoqueFinal < 0 
+              ? `ESTOQUE NEGATIVO: "${produto.nome}" está devendo ${Math.abs(estoqueFinal)} unidades.`
+              : `Estoque baixo para o produto: "${produto.nome}". Restam apenas ${estoqueFinal} unidades.`;
+            
             await criarNotificacaoUseCase.execute({
               tipo: 'ESTOQUE_BAIXO',
-              mensagem: `Estoque baixo para o produto: "${produto.nome}". Restam apenas ${estoqueFinal} unidades.`,
+              mensagem: msgNotif,
               idReferencia: idProduto,
               referenciaTipo: 'PRODUTO'
             }, { transaction: t });
@@ -189,6 +222,15 @@ class VendaSequelizeRepository extends IVendaRepository {
       }
 
       // 6. Integração Fidelização (Pontos)
+      // 6a. Primeiro resgata os pontos usados (se houver)
+      if (venda.idCliente && resgatarPontosUseCase && pontosUsados > 0) {
+        await resgatarPontosUseCase.execute({
+          clienteId: venda.idCliente,
+          pontos: pontosUsados
+        }, { transaction: t });
+      }
+      
+      // 6b. Depois adiciona novos pontos pela compra
       if (venda.idCliente && adicionarPontosUseCase) {
         await adicionarPontosUseCase.execute({ 
           clienteId: venda.idCliente, 
@@ -196,39 +238,41 @@ class VendaSequelizeRepository extends IVendaRepository {
         }, { transaction: t });
       }
 
-      // 7. PROCESSAMENTO DE TROCO ESPECIAL
-      if (resultadosPagamento) {
-        for (const res of resultadosPagamento) {
-          // Verifica se existe troco
-          if (res.detalhes && res.detalhes.troco > 0) {
-            const valorTroco = res.detalhes.troco;
-            const destino = res.detalhes.destinoTroco;
+      // 7. PROCESSAMENTO DE TROCO
+      const totalPago = venda.pagamentos.reduce((acc, p) => acc + p.valor, 0);
+      const troco = totalPago - vendaCriada.totalVenda;
 
-            if (destino === 'PIX' && criarLancamentoUseCase) {
-              // Cria DESPESA PAGA (Saiu dinheiro do caixa)
-              await criarLancamentoUseCase.execute({
-                descricao: `Troco PIX - Venda #${vendaCriada.id}`,
-                valor: valorTroco,
-                tipo: 'DESPESA',
-                status: 'PAGO',
-                dataPagamento: new Date(),
-                idVenda: vendaCriada.id,
-                idCliente: venda.idCliente
-              }, { transaction: t });
-            } 
-            else if (destino === 'CREDITO' && adicionarCreditoUseCase) {
-              // Adiciona CRÉDITO na carteira do cliente
-              if (!venda.idCliente) throw new Error('Venda sem cliente não pode gerar crédito.');
-              
-              await adicionarCreditoUseCase.execute({
-                idCliente: venda.idCliente,
-                valor: valorTroco,
-                descricao: `Troco da Venda #${vendaCriada.id}`,
-                idVendaOrigem: vendaCriada.id
-              }, { transaction: t });
-            }
+      if (troco > 0) {
+          // Opção 1: Salvar como CRÉDITO na loja
+          if (venda.destinoTroco === 'CREDITO') {
+              if (adicionarCreditoUseCase && venda.idCliente) {
+                  await adicionarCreditoUseCase.execute({
+                      idCliente: venda.idCliente,
+                      valor: troco,
+                      descricao: `Troco da Venda #${vendaCriada.id}`,
+                      idVendaOrigem: vendaCriada.id
+                  }, { transaction: t });
+              }
           }
-        }
+          // Opção 2: Devolver via PIX (Gera uma DESPESA/SAÍDA no financeiro)
+          else if (venda.destinoTroco === 'PIX') {
+              if (criarLancamentoUseCase) {
+                  const despesaTroco = new Lancamento({
+                      descricao: `Troco PIX referente à Venda #${vendaCriada.id}`,
+                      valor: troco,
+                      tipo: 'DESPESA',
+                      status: 'PAGO', // Saiu do caixa imediatamente
+                      dataPagamento: new Date(),
+                      idVenda: vendaCriada.id,
+                  });
+                  await criarLancamentoUseCase.execute(despesaTroco, { transaction: t });
+              }
+          }
+          // Opção 3: DINHEIRO (Padrão) - Não faz nada extra, o caixa físico reflete a saída.
+      }
+      // Mantendo compatibilidade com resultadosPagamento se houver lógica específica lá no futuro
+      if (resultadosPagamento) {
+          // ... (outras lógicas de processamento de retorno se necessário)
       }
 
       await t.commit();
@@ -250,7 +294,8 @@ class VendaSequelizeRepository extends IVendaRepository {
           include: [{ model: ProdutoModel }]
         },
         {
-          model: ClienteModel
+          model: ClienteModel,
+          as: 'cliente'
         },
         {
           model: PagamentoModel, // Inclui os pagamentos
@@ -296,9 +341,33 @@ class VendaSequelizeRepository extends IVendaRepository {
       include: [
         { 
             model: ClienteModel,
+            as: 'cliente',
             where: Object.keys(whereCliente).length > 0 ? whereCliente : undefined,
             required: Object.keys(whereCliente).length > 0
         },
+        { model: PagamentoModel, as: 'pagamentos' },
+        { 
+          model: ItemVendaModel, 
+          as: 'itens',
+          include: [{ model: ProdutoModel }]
+        }
+      ]
+    });
+    return vendasModel.map(VendaMapper.toDomain);
+  }
+
+  /**
+   * Busca vendas de um cliente específico (para histórico de compras)
+   * @param {number} clienteId - ID do cliente
+   * @param {number} limite - Quantidade máxima de vendas a retornar
+   * @returns {Array} Lista de vendas do cliente
+   */
+  async buscarPorClienteId(clienteId, limite = 5) {
+    const vendasModel = await VendaModel.findAll({
+      where: { idCliente: clienteId },
+      order: [['data_venda', 'DESC']],
+      limit: limite,
+      include: [
         { model: PagamentoModel, as: 'pagamentos' },
         { 
           model: ItemVendaModel, 
@@ -326,12 +395,25 @@ class VendaSequelizeRepository extends IVendaRepository {
         { where: { id: venda.id }, transaction: t }
       );
 
-      // 2. Devolve os itens ao estoque
+      // 2. Devolve os itens ao estoque (LOTE)
       for (const item of venda.itens) {
-        const produto = await produtoRepository.buscarPorId(item.idProduto, { transaction: t });
-        if (produto) {
-          produto.ajustarEstoque(item.quantidade);
-          await produtoRepository.atualizar(produto, { transaction: t });
+        // Busca o lote mais adequado para devolução (ex: o com validade mais distante ou último criado)
+        const lote = await LoteModel.findOne({
+            where: { idProduto: item.idProduto },
+            order: [['validade', 'DESC'], ['id', 'DESC']],
+            transaction: t
+        });
+
+        if (lote) {
+            await lote.increment('quantidade', { by: item.quantidade, transaction: t });
+        } else {
+            // Se não houver lote, cria um para receber a devolução (Fallback)
+             await LoteModel.create({
+                 idProduto: item.idProduto,
+                 quantidade: item.quantidade,
+                 custoUnitario: item.precoUnitario, // Usa preço de venda como custo aprox ou 0
+                 validade: null
+             }, { transaction: t });
         }
       }
       

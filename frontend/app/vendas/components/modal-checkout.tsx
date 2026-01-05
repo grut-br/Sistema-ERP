@@ -9,12 +9,14 @@ interface ModalCheckoutProps {
   isOpen: boolean
   onClose: () => void
   cartTotal: number
+  subtotalOriginal: number
+  discountValue: number
   cliente: any | null
   cartItems: any[]
   onSuccess: () => void
 }
 
-export function ModalCheckout({ isOpen, onClose, cartTotal, cliente, cartItems, onSuccess }: ModalCheckoutProps) {
+export function ModalCheckout({ isOpen, onClose, cartTotal, subtotalOriginal, discountValue, cliente, cartItems, onSuccess }: ModalCheckoutProps) {
   const { toast } = useToast()
   
   // -- Payment State --
@@ -24,10 +26,19 @@ export function ModalCheckout({ isOpen, onClose, cartTotal, cliente, cartItems, 
   
   // -- Fidelity State --
   const [usarFidelidade, setUsarFidelidade] = useState(false)
+  const [usarCredito, setUsarCredito] = useState(false)
   const [descontoFidelidade, setDescontoFidelidade] = useState(0)
 
   // -- Final Calculation --
-  const valorDescontoFidelidade = usarFidelidade ? (cliente?.pontos || 0) * 0.05 : 0
+  // Valor que PODE ser resgatado em pontos (sempre calculado para mostrar no botão)
+  const pontosDisponiveis = cliente?.pontos || 0
+  const valorPontosDisponivel = pontosDisponiveis * 0.05
+  
+  // Valor de crédito disponível
+  const creditoDisponivel = cliente?.saldoCredito || 0
+  
+  // Desconto de fidelidade aplicado (só quando usarFidelidade = true)
+  const valorDescontoFidelidade = usarFidelidade ? valorPontosDisponivel : 0
   
   // Limit discount to total (cannot be negative)
   const realDiscount = Math.min(valorDescontoFidelidade, cartTotal)
@@ -36,6 +47,10 @@ export function ModalCheckout({ isOpen, onClose, cartTotal, cliente, cartItems, 
   const totalPago = pagamentos.reduce((acc, p) => acc + p.valor, 0)
   const restante = Math.max(0, finalTotal - totalPago)
 
+  // -- Change & Credit State --
+  const [destinoTroco, setDestinoTroco] = useState<'DINHEIRO' | 'PIX' | 'CREDITO'>('DINHEIRO')
+  const troco = Math.max(0, totalPago - finalTotal)
+  
   // -- Alerts State --
   const [alertFiadoLevel, setAlertFiadoLevel] = useState<'NONE' | 'WARNING' | 'CRITICAL'>('NONE')
 
@@ -43,13 +58,15 @@ export function ModalCheckout({ isOpen, onClose, cartTotal, cliente, cartItems, 
      if (isOpen) {
          setPagamentos([])
          setMetodo("DINHEIRO")
-         setValorPagamento(Math.max(0, cartTotal - (usarFidelidade ? realDiscount : 0)).toFixed(2))
+         setValorPagamento(Math.max(0, cartTotal).toFixed(2)) // Inicializa com total sem desconto pra user decidir
          setUsarFidelidade(false)
+         setUsarCredito(false)
          setAlertFiadoLevel('NONE')
+         setDestinoTroco('DINHEIRO')
      }
   }, [isOpen])
 
-  // Auto-fill remaining amount when method changes or fidelity changes
+  // Recalculates remaining when total changes (points applied) or payments change
   useEffect(() => {
      const newRestante = Math.max(0, finalTotal - totalPago)
      if (newRestante > 0) {
@@ -57,12 +74,31 @@ export function ModalCheckout({ isOpen, onClose, cartTotal, cliente, cartItems, 
      } else {
          setValorPagamento("")
      }
-  }, [finalTotal, totalPago, metodo])
+     
+     // 1. Correção de Estado (Inicialização Automática)
+     // Se pagou e tem troco, garante que haja um destino definido
+     const currentTroco = totalPago - finalTotal
+     if (currentTroco > 0 && !destinoTroco) {
+        setDestinoTroco('DINHEIRO')
+     }
+  }, [finalTotal, totalPago, metodo, destinoTroco])
 
   const handleAddPagamento = () => {
       const valor = parseFloat(valorPagamento)
       if (!valor || valor <= 0) return
       
+      // VALIDATION: CREDITO (Saldo em Conta)
+      if (metodo === 'CREDITO') {
+          if (!cliente) {
+              toast({ title: "Erro", description: "Cliente não identificado.", variant: "destructive" })
+              return
+          }
+           if (valor > (cliente.saldoCredito || 0)) {
+              toast({ title: "Erro", description: "Saldo insuficiente.", variant: "destructive" })
+              return
+           }
+      }
+
       // FIADO VALIDATION
       if (metodo === 'FIADO') {
           if (!cliente) {
@@ -70,15 +106,8 @@ export function ModalCheckout({ isOpen, onClose, cartTotal, cliente, cartItems, 
               return
           }
           const limite = parseFloat(cliente.limiteFiado || 0)
-          // We can't know current debt easily without another API call, assuming limiteFiado is the REMAINING limit or TOTAL limit?
-          // Usually limiteFiado is the Max Limit. We need the current debt. 
-          // For simplicity in this step, I'll assume standard implementation where we check against the Limit.
-          // Ideally: currentDebt + valor > limit.
-          // Since I updated repository to return data, but usually debt is calculated.
-          // I will implement a loose check for now: If valor > limite (assuming full limit available) just to demonstrate UI.
           
           if (valor > limite) {
-             // Logic to set alert level
              const excesso = valor - limite;
              const percent = (excesso / limite) * 100
              if (percent > 20) setAlertFiadoLevel('CRITICAL')
@@ -86,7 +115,7 @@ export function ModalCheckout({ isOpen, onClose, cartTotal, cliente, cartItems, 
           }
       }
 
-      setPagamentos([...pagamentos, { metodo, valor }])
+      setPagamentos([...pagamentos, { metodo, valor, salvarTrocoCredito: false }])
   }
 
   const removePagamento = (idx: number) => {
@@ -97,22 +126,33 @@ export function ModalCheckout({ isOpen, onClose, cartTotal, cliente, cartItems, 
   }
 
   const handleFinalizar = async () => {
+      console.log("handleFinalizar initiated [DEBUG]"); // Confirmar clique
+      
       // Validations
       if (restante > 0.01) {
-          toast({ title: "Erro", description: "O valor total não foi pago.", variant: "destructive" })
+          toast({ title: "Erro", description: `Falta pagar: ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(restante)}`, variant: "destructive" })
           return
       }
+
+      // Validação explícita do Destino do Troco
+      if (troco > 0 && !destinoTroco) {
+          toast({ title: "Atenção", description: "Por favor, selecione uma opção para o troco.", variant: "destructive" })
+          return; // Stop here
+      }
+
+      toast({ title: "Processando", description: "Enviando venda..." })
 
       const payload = {
           clienteId: cliente?.id || null,
           itens: cartItems.map(i => ({ idProduto: i.idProduto, quantidade: i.quantidade, precoUnitario: i.precoUnitario })),
-          pagamentos: pagamentos,
-          pontosUsados: usarFidelidade ? cliente?.pontos : 0
+          pagamentos: pagamentos.map(p => ({ ...p, salvarTrocoCredito: false })), 
+          destinoTroco: troco > 0 ? destinoTroco : null,
+          pontosUsados: usarFidelidade ? cliente?.pontos : 0,
+          descontoManual: discountValue || 0
       }
 
       console.log("PAYLOAD VENDA:", JSON.stringify(payload, null, 2))
       
-      // Call API (Mocked call to /api/vendas POST)
       try {
           const res = await fetch('/api/vendas', {
               method: 'POST',
@@ -123,13 +163,16 @@ export function ModalCheckout({ isOpen, onClose, cartTotal, cliente, cartItems, 
           if (res.ok) {
               onSuccess()
               onClose()
+              toast({ title: "Sucesso", description: "Venda realizada!" })
           } else {
               const err = await res.json()
-              toast({ title: "Erro na Venda", description: err.error || "Falha ao processar venda", variant: "destructive" })
+              const msg = err.error || "Falha ao processar venda"
+              toast({ title: "Erro na Venda", description: msg, variant: "destructive" })
           }
-      } catch (e) {
+      } catch (e: any) {
           console.error(e)
-          toast({ title: "Erro", description: "Erro de conexão", variant: "destructive" })
+          const msg = e.message || "Erro de conexão"
+          toast({ title: "Erro Crítico", description: msg, variant: "destructive" })
       }
   }
 
@@ -148,29 +191,66 @@ export function ModalCheckout({ isOpen, onClose, cartTotal, cliente, cartItems, 
                     <div className="text-sm text-gray-500 mb-1">Cliente</div>
                     <div className="font-bold text-gray-800">{cliente.nome}</div>
                     
-                    {cliente.pontos > 0 && (
-                        <div className="mt-4 pt-4 border-t border-gray-100">
-                             <div className="flex justify-between items-center mb-2">
+                        {cliente.pontos > 0 && (
+                            <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between">
                                 <div className="flex items-center gap-2 text-purple-600 text-sm font-medium">
                                     <Trophy size={16} />
-                                    <span>{cliente.pontos} Pts (R$ {valorDescontoFidelidade.toFixed(2)})</span>
+                                    <span>{cliente.pontos} Pts</span>
                                 </div>
-                                <Switch 
-                                    checked={usarFidelidade}
-                                    onCheckedChange={setUsarFidelidade}
-                                />
+                                <button 
+                                    className={`text-xs px-2 py-1 rounded font-bold border transition-colors ${usarFidelidade 
+                                        ? 'bg-red-100 text-red-600 border-red-200' 
+                                        : 'bg-green-100 text-green-600 border-green-200'}`}
+                                    onClick={() => setUsarFidelidade(!usarFidelidade)}
+                                >
+                                    {usarFidelidade ? 'Remover' : `Resgatar R$ ${valorPontosDisponivel.toFixed(2)}`}
+                                </button>
                              </div>
-                             {usarFidelidade && <span className="text-xs text-green-600">Desconto aplicado!</span>}
-                        </div>
-                    )}
+                        )}
+                        
+                        {/* Credits Info */}
+                        {cliente && creditoDisponivel > 0 && (
+                             <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between">
+                                <div className="flex items-center gap-2 text-emerald-600 text-sm font-medium">
+                                    <span>💰</span>
+                                    <span>Saldo Crédito</span>
+                                </div>
+                                <button 
+                                    className={`text-xs px-2 py-1 rounded font-bold border transition-colors ${usarCredito 
+                                        ? 'bg-red-100 text-red-600 border-red-200' 
+                                        : 'bg-emerald-100 text-emerald-600 border-emerald-200'}`}
+                                    onClick={() => {
+                                        if (!usarCredito) {
+                                            // Usa até o valor necessário (restante) ou o crédito total
+                                            const valorUsar = Math.min(creditoDisponivel, restante > 0 ? restante : finalTotal)
+                                            if (valorUsar > 0) {
+                                                setPagamentos([...pagamentos, { metodo: 'CREDITO', valor: valorUsar, salvarTrocoCredito: false }])
+                                            }
+                                        } else {
+                                            // Remove o pagamento com crédito
+                                            setPagamentos(pagamentos.filter(p => p.metodo !== 'CREDITO'))
+                                        }
+                                        setUsarCredito(!usarCredito)
+                                    }}
+                                >
+                                    {usarCredito ? 'Remover' : `Usar ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Math.min(creditoDisponivel, restante > 0 ? restante : finalTotal))}`}
+                                </button>
+                             </div>
+                        )}
                 </div>
             )}
 
             <div className="space-y-3 mt-auto">
                 <div className="flex justify-between text-gray-600">
                     <span>Subtotal</span>
-                    <span>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(cartTotal)}</span>
+                    <span>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(subtotalOriginal)}</span>
                 </div>
+                {discountValue > 0 && (
+                    <div className="flex justify-between text-red-500 font-medium animate-in fade-in">
+                        <span>Desconto</span>
+                        <span>- {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(discountValue)}</span>
+                    </div>
+                )}
                 {usarFidelidade && (
                      <div className="flex justify-between text-green-600 font-medium">
                         <span>Desconto Fidelidade</span>
@@ -224,6 +304,7 @@ export function ModalCheckout({ isOpen, onClose, cartTotal, cliente, cartItems, 
                      <option value="CARTAO_CREDITO">Cartão de Crédito</option>
                      <option value="CARTAO_DEBITO">Cartão de Débito</option>
                      <option value="FIADO">Fiado / A Prazo</option>
+                     {cliente && creditoDisponivel > 0 && <option value="CREDITO">Saldo em Conta</option>}
                  </select>
                  <input 
                     type="number"
@@ -276,6 +357,56 @@ export function ModalCheckout({ isOpen, onClose, cartTotal, cliente, cartItems, 
                      </span>
                  </div>
                  
+             {/* Change Handling - New UI */}
+             {restante <= 0 && troco > 0 && (
+                 <div className="mb-6 p-4 bg-blue-50 border border-blue-100 rounded-lg animate-in fade-in">
+                     <div className="flex justify-between items-center mb-3">
+                        <span className="text-lg font-bold text-blue-900">Troco: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(troco)}</span>
+                     </div>
+                     
+                     <div className="bg-white p-3 rounded-lg border border-blue-100">
+                         <h4 className="text-sm font-semibold text-gray-500 mb-2 uppercase tracking-wide">Destino do Troco</h4>
+                         <div className="space-y-2">
+                             <label className={`flex items-center gap-3 p-2 rounded cursor-pointer border transition-colors ${destinoTroco === 'DINHEIRO' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:bg-gray-50'}`}>
+                                 <input 
+                                     type="radio" 
+                                     name="destinoTroco" 
+                                     value="DINHEIRO"
+                                     checked={destinoTroco === 'DINHEIRO'}
+                                     onChange={() => setDestinoTroco('DINHEIRO')}
+                                     className="text-blue-600 focus:ring-blue-500"
+                                 />
+                                 <span className="font-medium text-gray-700">💵 Devolver em Dinheiro</span>
+                             </label>
+                             <label className={`flex items-center gap-3 p-2 rounded cursor-pointer border transition-colors ${destinoTroco === 'PIX' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:bg-gray-50'}`}>
+                                 <input 
+                                     type="radio" 
+                                     name="destinoTroco" 
+                                     value="PIX"
+                                     checked={destinoTroco === 'PIX'}
+                                     onChange={() => setDestinoTroco('PIX')}
+                                     className="text-blue-600 focus:ring-blue-500"
+                                 />
+                                 <span className="font-medium text-gray-700">📱 Enviar PIX</span>
+                             </label>
+                             {cliente && (
+                                <label className={`flex items-center gap-3 p-2 rounded cursor-pointer border transition-colors ${destinoTroco === 'CREDITO' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:bg-gray-50'}`}>
+                                    <input 
+                                        type="radio" 
+                                        name="destinoTroco" 
+                                        value="CREDITO"
+                                        checked={destinoTroco === 'CREDITO'}
+                                        onChange={() => setDestinoTroco('CREDITO')}
+                                        className="text-blue-600 focus:ring-blue-500"
+                                    />
+                                    <span className="font-medium text-gray-700">💰 Salvar como Crédito</span>
+                                </label>
+                             )}
+                         </div>
+                     </div>
+                 </div>
+             )}
+
                  <button 
                     className="w-full py-4 bg-emerald-600 text-white text-xl font-bold rounded-xl hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-emerald-200"
                     onClick={handleFinalizar}

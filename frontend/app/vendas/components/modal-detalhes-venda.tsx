@@ -97,7 +97,7 @@ export function ModalDetalhesVenda({ isOpen, onClose, vendaId, onCancelSuccess }
                        <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Cliente</h3>
                        <div className="flex justify-between items-center">
                            <div className="font-medium text-lg text-gray-900">
-                                {venda.cliente ? venda.cliente.nome : "Consumidor Final"}
+                                {venda.cliente?.nome || "Consumidor Final"}
                            </div>
                            {venda.cliente && venda.cliente.cpf && (
                                <div className="text-gray-500 text-sm">CPF: {venda.cliente.cpf}</div>

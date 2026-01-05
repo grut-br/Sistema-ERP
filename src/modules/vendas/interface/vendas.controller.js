@@ -32,6 +32,7 @@ class VendaController {
 
       const dadosVenda = {
         ...req.body, 
+        idCliente: req.body.clienteId,
         idUsuario: usuarioLogado ? usuarioLogado.id : null
       };
 

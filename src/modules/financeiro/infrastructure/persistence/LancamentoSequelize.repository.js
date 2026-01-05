@@ -70,18 +70,16 @@ class LancamentoSequelizeRepository extends ILancamentoRepository {
   }
 
   async cancelarFiadoPorVendaId(vendaId, options = {}) {
-  // O fiado é uma RECEITA PENDENTE vinculada à venda
-  await LancamentoModel.update(
-    { status: 'CANCELADO' },
-    {
+    // O fiado é uma RECEITA PENDENTE vinculada à venda
+    // Como o status 'ESTORNADO' não existe no ENUM, optamos por DELETAR o registro pendente
+    await LancamentoModel.destroy({
       where: {
         idVenda: vendaId,
         tipo: 'RECEITA',
         status: 'PENDENTE'
       },
       ...options // Passa a transação
-    }
-  );
-}
+    });
+  }
 }
 module.exports = LancamentoSequelizeRepository;
