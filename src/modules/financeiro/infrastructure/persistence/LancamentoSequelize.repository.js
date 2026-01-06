@@ -1,22 +1,38 @@
 const ILancamentoRepository = require('../../domain/repositories/ILancamentoRepository');
 const LancamentoModel = require('./lancamento.model');
+const CategoriaFinanceiraModel = require('./categoriaFinanceira.model');
 const Lancamento = require('../../domain/entities/lancamento.entity');
 const { Op } = require('sequelize');
 
 const Mapper = {
-  toDomain: (model) => model ? new Lancamento(model.toJSON()) : null,
+  toDomain: (model) => {
+    if (!model) return null;
+    const data = model.toJSON();
+    return new Lancamento({
+      ...data,
+      // Extrai categoria se disponível
+      categoria: data.categoria || null,
+      cliente: data.cliente || null,
+    });
+  },
   toPersistence: (entity) => ({
     id: entity.id,
     descricao: entity.descricao,
     valor: entity.valor,
+    valorPago: entity.valorPago,
     tipo: entity.tipo,
     status: entity.status,
     dataVencimento: entity.dataVencimento,
     dataPagamento: entity.dataPagamento,
     idCliente: entity.idCliente,
     idVenda: entity.idVenda,
+    // Novos campos
+    idCategoria: entity.idCategoria,
+    frequencia: entity.frequencia,
+    idPai: entity.idPai,
   }),
 };
+
 
 class LancamentoSequelizeRepository extends ILancamentoRepository {
   async salvar(lancamento, options = {}) {

@@ -1,4 +1,5 @@
 const LancamentoSequelizeRepository = require('../infrastructure/persistence/LancamentoSequelize.repository');
+const HistoricoPagamentoSequelizeRepository = require('../infrastructure/persistence/HistoricoPagamentoSequelize.repository');
 
 // Importa todos os casos de uso
 const CriarLancamentoUseCase = require('../application/criarLancamento.usecase');
@@ -11,16 +12,20 @@ const ListarLancamentosPorClienteUseCase = require('../application/listarLancame
 
 class FinanceiroController {
   constructor() {
-    const repo = new LancamentoSequelizeRepository();
+    const lancamentoRepo = new LancamentoSequelizeRepository();
+    const historicoPagamentoRepo = new HistoricoPagamentoSequelizeRepository();
 
     // Instancia todos os casos de uso
-    this.criarUseCase = new CriarLancamentoUseCase(repo);
-    this.listarUseCase = new ListarLancamentosUseCase(repo);
-    this.buscarPorIdUseCase = new BuscarLancamentoPorIdUseCase(repo);
-    this.atualizarUseCase = new AtualizarLancamentoUseCase(repo);
-    this.deletarUseCase = new DeletarLancamentoUseCase(repo);
-    this.pagarUseCase = new PagarLancamentoUseCase(repo);
-    this.listarPorClienteUseCase = new ListarLancamentosPorClienteUseCase(repo);
+    this.criarUseCase = new CriarLancamentoUseCase(lancamentoRepo);
+    this.listarUseCase = new ListarLancamentosUseCase(lancamentoRepo);
+    this.buscarPorIdUseCase = new BuscarLancamentoPorIdUseCase(lancamentoRepo);
+    this.atualizarUseCase = new AtualizarLancamentoUseCase(lancamentoRepo);
+    this.deletarUseCase = new DeletarLancamentoUseCase(lancamentoRepo);
+    this.pagarUseCase = new PagarLancamentoUseCase(lancamentoRepo, historicoPagamentoRepo);
+    this.listarPorClienteUseCase = new ListarLancamentosPorClienteUseCase(lancamentoRepo);
+    
+    // Repositório para histórico
+    this.historicoPagamentoRepo = historicoPagamentoRepo;
 
     // Binds
     this.create = this.create.bind(this);
@@ -30,6 +35,7 @@ class FinanceiroController {
     this.delete = this.delete.bind(this);
     this.pay = this.pay.bind(this);
     this.getByCliente = this.getByCliente.bind(this);
+    this.getHistoricoPagamentos = this.getHistoricoPagamentos.bind(this);
   }
 
   async create(req, res) {
@@ -67,14 +73,19 @@ class FinanceiroController {
     } catch (error) { res.status(400).json({ error: error.message }); }
   }
 
+  /**
+   * PATCH /financeiro/:id/pagar
+   * Registra pagamento (parcial ou total)
+   * Body: { valorPago?, formaPagamento?, observacao? }
+   */
   async pay(req, res) {
     try {
-      const lancamentoPago = await this.pagarUseCase.execute(Number(req.params.id));
-      res.status(200).json(lancamentoPago);
+      const resultado = await this.pagarUseCase.execute(Number(req.params.id), req.body);
+      res.status(200).json(resultado);
     } catch (error) { res.status(400).json({ error: error.message }); }
   }
 
-  // Novo método para buscar por cliente
+  // Buscar lançamentos por cliente
   async getByCliente(req, res) {
     try {
       const { clienteId } = req.params;
@@ -82,5 +93,18 @@ class FinanceiroController {
       res.status(200).json(lancamentos);
     } catch (error) { res.status(500).json({ error: error.message }); }
   }
+
+  /**
+   * GET /financeiro/lancamentos/:id/historico
+   * Retorna histórico de pagamentos de um lançamento
+   */
+  async getHistoricoPagamentos(req, res) {
+    try {
+      const { id } = req.params;
+      const historico = await this.historicoPagamentoRepo.buscarPorLancamentoId(Number(id));
+      res.status(200).json(historico);
+    } catch (error) { res.status(500).json({ error: error.message }); }
+  }
 }
+
 module.exports = FinanceiroController;

@@ -6,6 +6,9 @@ const ProdutoModel = require('../../../produtos/infrastructure/persistence/produ
 const LoteModel = require('../../../produtos/infrastructure/persistence/lote.model');
 const Lancamento = require('../../../financeiro/domain/entities/lancamento.entity');
 
+// ID da categoria padrão para compras (conforme seed do banco)
+const CATEGORIA_PAGAMENTO_FORNECEDOR = 3;
+
 // ... (imports existentes)
 const Compra = require('../../domain/entities/compra.entity');
 const ItemCompra = require('../../domain/entities/itemCompra.entity');
@@ -91,6 +94,7 @@ class CompraSequelizeRepository extends ICompraRepository {
           status: 'PENDENTE',
           idCliente: null, // Não é um cliente
           dataVencimento: new Date(), // Idealmente viria da 'compra'
+          idCategoria: CATEGORIA_PAGAMENTO_FORNECEDOR, // Categoria automática
         });
         await criarLancamentoUseCase.execute(dadosContaPagar, { transaction: t });
       }

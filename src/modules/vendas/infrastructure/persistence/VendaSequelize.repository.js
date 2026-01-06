@@ -12,6 +12,13 @@ const ItemVenda = require('../../domain/entities/itemVenda.entity');
 const Lancamento = require('../../../financeiro/domain/entities/lancamento.entity');
 const IVendaRepository = require('../../domain/repositories/IVendaRepository');
 
+// IDs das categorias padrão (conforme seed do banco)
+// 1: Venda de Produtos (RECEITA)
+// 2: Fiado Cliente (RECEITA)
+// 3: Pagamento Fornecedor (DESPESA)
+const CATEGORIA_VENDA_PRODUTOS = 1;
+const CATEGORIA_FIADO_CLIENTE = 2;
+
 
 // Mapper ATUALIZADO
 const VendaMapper = {
@@ -207,6 +214,7 @@ class VendaSequelizeRepository extends IVendaRepository {
             status: 'PENDENTE',
             idCliente: venda.idCliente,
             idVenda: vendaCriada.id,
+            idCategoria: CATEGORIA_FIADO_CLIENTE, // Categoria automática
           });
           await criarLancamentoUseCase.execute(dadosFiado, { transaction: t });
         }
