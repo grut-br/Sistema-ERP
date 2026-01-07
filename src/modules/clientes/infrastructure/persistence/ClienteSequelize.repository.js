@@ -126,12 +126,12 @@ class ClienteSequelizeRepository extends IClienteRepository {
       }) || 0;
       const saldoCredito = Number(creditosEntrada) - Number(creditosSaida);
       
-      // Tem Pendência (lançamento PENDENTE com vencimento < hoje)
+      // Tem Pendência (qualquer lançamento PENDENTE do tipo RECEITA = fiado)
       const pendenciasCount = await LancamentoModel.count({
         where: {
           idCliente: cliente.id,
           status: 'PENDENTE',
-          dataVencimento: { [Op.lt]: hoje }
+          tipo: 'RECEITA' // Fiados são RECEITAs pendentes
         }
       });
       const temPendencia = pendenciasCount > 0;

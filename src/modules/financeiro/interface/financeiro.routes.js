@@ -29,6 +29,7 @@ financeiroRoutes.delete('/:id', controller.delete);
 
 // Ações de Negócio
 financeiroRoutes.patch('/:id/pagar', controller.pay);
+financeiroRoutes.post('/:id/baixar', controller.baixar);
 
 // Histórico de pagamentos de um lançamento
 financeiroRoutes.get('/lancamentos/:id/historico', controller.getHistoricoPagamentos);

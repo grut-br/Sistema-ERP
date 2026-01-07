@@ -1,9 +1,12 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, User, CreditCard, ShoppingBag, AlertCircle, Trophy, Clock, Plus, Trash2, MapPin } from 'lucide-react'
+import { X, User, CreditCard, ShoppingBag, AlertCircle, Trophy, Clock, Plus, Trash2, MapPin, DollarSign } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/hooks/use-toast'
+import { ModalRecebimento } from './ModalRecebimento'
+import { ModalPagamentoGeral } from './ModalPagamentoGeral'
+import { ModalDetalhesVenda } from './ModalDetalhesVenda'
 
 interface ModalPerfilClienteProps {
   isOpen: boolean
@@ -47,6 +50,14 @@ interface HistoricoVenda {
   status: string
 }
 
+interface Pendencia {
+  id: number
+  descricao: string
+  valor: number
+  valorPago?: number
+  dataVencimento: string | null
+}
+
 const initialEnderecoForm = {
   cep: '',
   logradouro: '',
@@ -65,12 +76,24 @@ export function ModalPerfilCliente({ isOpen, onClose, clienteId }: ModalPerfilCl
   const [enderecos, setEnderecos] = useState<Endereco[]>([])
   const [infoFinanceira, setInfoFinanceira] = useState<InfoFinanceira | null>(null)
   const [historico, setHistorico] = useState<HistoricoVenda[]>([])
+  const [pendencias, setPendencias] = useState<Pendencia[]>([])
   const [isLoading, setIsLoading] = useState(false)
   
   // Form para novo endereço
   const [showEnderecoForm, setShowEnderecoForm] = useState(false)
   const [enderecoForm, setEnderecoForm] = useState(initialEnderecoForm)
   const [isAddingEndereco, setIsAddingEndereco] = useState(false)
+
+  // Modal de recebimento
+  const [showRecebimentoModal, setShowRecebimentoModal] = useState(false)
+  const [pendenciaSelecionada, setPendenciaSelecionada] = useState<Pendencia | null>(null)
+
+  // Modal de pagamento geral
+  const [showPagamentoGeralModal, setShowPagamentoGeralModal] = useState(false)
+
+  // Modal de detalhes da venda
+  const [showDetalhesVendaModal, setShowDetalhesVendaModal] = useState(false)
+  const [vendaSelecionadaId, setVendaSelecionadaId] = useState<number | null>(null)
 
   useEffect(() => {
     if (isOpen && clienteId) {
@@ -106,6 +129,12 @@ export function ModalPerfilCliente({ isOpen, onClose, clienteId }: ModalPerfilCl
       const resHistorico = await fetch(`/api/clientes/${clienteId}/historico-compras?limite=5`)
       if (resHistorico.ok) {
         setHistorico(await resHistorico.json())
+      }
+
+      // Buscar pendências (fiado)
+      const resPendencias = await fetch(`/api/clientes/${clienteId}/pendencias`)
+      if (resPendencias.ok) {
+        setPendencias(await resPendencias.json())
       }
     } catch (e) {
       console.error('Erro ao buscar dados do cliente:', e)
@@ -411,16 +440,18 @@ export function ModalPerfilCliente({ isOpen, onClose, clienteId }: ModalPerfilCl
                 <div className="space-y-6">
                   {/* Cards de Resumo */}
                   <div className="grid grid-cols-3 gap-4">
-                    <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-xl border border-blue-200">
-                      <div className="flex items-center gap-2 text-blue-600 mb-2">
-                        <CreditCard size={18} />
-                        <span className="text-sm font-medium">Limite Fiado</span>
+                    <div className="bg-gradient-to-br from-red-50 to-red-100 p-4 rounded-xl border border-red-200">
+                      <div className="flex items-center gap-2 text-red-600 mb-2">
+                        <AlertCircle size={18} />
+                        <span className="text-sm font-medium">Total Devido</span>
                       </div>
-                      <p className="text-2xl font-bold text-blue-800">
-                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(infoFinanceira.limiteFiado)}
+                      <p className="text-2xl font-bold text-red-800">
+                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
+                          pendencias.reduce((acc, p) => acc + (p.valor - (p.valorPago || 0)), 0)
+                        )}
                       </p>
                     </div>
-                    
+
                     <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-xl border border-green-200">
                       <div className="flex items-center gap-2 text-green-600 mb-2">
                         <CreditCard size={18} />
@@ -440,6 +471,80 @@ export function ModalPerfilCliente({ isOpen, onClose, clienteId }: ModalPerfilCl
                         {infoFinanceira.pontos} pts
                       </p>
                     </div>
+                  </div>
+
+                  {/* Pendências */}
+                  <div className="pt-4 border-t border-gray-100">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                        <DollarSign size={16} />
+                        Dívidas Pendentes
+                      </h3>
+                      {pendencias.length > 0 && (
+                        <button
+                          className="px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 text-white text-sm font-semibold rounded-lg hover:from-green-700 hover:to-green-800 transition-all shadow-md flex items-center gap-2"
+                          onClick={() => setShowPagamentoGeralModal(true)}
+                        >
+                          <DollarSign size={16} />
+                          Pagar Todas ({new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
+                            pendencias.reduce((acc, p) => acc + (p.valor - (p.valorPago || 0)), 0)
+                          )})
+                        </button>
+                      )}
+                    </div>
+
+                    {pendencias.length === 0 ? (
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-6 text-center">
+                        <p className="text-green-700 font-medium text-lg">🎉 Nenhuma dívida pendente!</p>
+                        <p className="text-green-600 text-sm mt-1">Cliente está em dia com os pagamentos</p>
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead className="bg-gray-50 border-b border-gray-200">
+                            <tr>
+                              <th className="text-left px-3 py-2 text-gray-600 font-medium">Descrição</th>
+                              <th className="text-left px-3 py-2 text-gray-600 font-medium">Vencimento</th>
+                              <th className="text-right px-3 py-2 text-gray-600 font-medium">Valor</th>
+                              <th className="text-center px-3 py-2 text-gray-600 font-medium">Ações</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-100">
+                            {pendencias.map((pendencia) => {
+                              const vencido = pendencia.dataVencimento && new Date(pendencia.dataVencimento) < new Date()
+                              
+                              return (
+                                <tr key={pendencia.id} className={vencido ? 'bg-red-50' : ''}>
+                                  <td className="px-3 py-3 text-gray-800">{pendencia.descricao}</td>
+                                  <td className={`px-3 py-3 ${vencido ? 'text-red-600 font-semibold' : 'text-gray-600'}`}>
+                                    {pendencia.dataVencimento 
+                                      ? new Date(pendencia.dataVencimento + 'T00:00:00').toLocaleDateString('pt-BR')
+                                      : '—'
+                                    }
+                                    {vencido && <span className="ml-1 text-xs">(Vencido)</span>}
+                                  </td>
+                                  <td className="px-3 py-3 text-right font-bold text-red-600">
+                                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(pendencia.valor)}
+                                  </td>
+                                  <td className="px-3 py-3 text-center">
+                                    <button
+                                      className="px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded-md hover:bg-green-700 transition-colors flex items-center gap-1 mx-auto"
+                                      onClick={() => {
+                                        setPendenciaSelecionada(pendencia)
+                                        setShowRecebimentoModal(true)
+                                      }}
+                                    >
+                                      <DollarSign size={14} />
+                                      Receber
+                                    </button>
+                                  </td>
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
                   </div>
 
                   {/* Info Adicional */}
@@ -467,7 +572,11 @@ export function ModalPerfilCliente({ isOpen, onClose, clienteId }: ModalPerfilCl
                       {historico.map((venda) => (
                         <div 
                           key={venda.id} 
-                          className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-100"
+                          className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-100 cursor-pointer hover:bg-gray-100 transition-colors"
+                          onClick={() => {
+                            setVendaSelecionadaId(venda.id)
+                            setShowDetalhesVendaModal(true)
+                          }}
                         >
                           <div>
                             <p className="font-medium text-gray-800">Venda #{venda.id}</p>
@@ -497,6 +606,43 @@ export function ModalPerfilCliente({ isOpen, onClose, clienteId }: ModalPerfilCl
           )}
         </div>
       </div>
+
+      {/* Modal de Recebimento */}
+      <ModalRecebimento
+        isOpen={showRecebimentoModal}
+        onClose={() => {
+          setShowRecebimentoModal(false)
+          setPendenciaSelecionada(null)
+        }}
+        onSuccess={() => {
+          fetchClienteData() // Recarrega tudo após recebimento
+          toast({ 
+            title: "Sucesso", 
+            description: "Dívida quitada com sucesso!",
+            variant: "default"
+          })
+        }}
+        pendencia={pendenciaSelecionada}
+      />
+
+      {/* Modal de Pagamento Geral */}
+      <ModalPagamentoGeral
+        isOpen={showPagamentoGeralModal}
+        onClose={() => setShowPagamentoGeralModal(false)}
+        onSuccess={() => fetchClienteData()}
+        clienteId={clienteId}
+        totalDevido={pendencias.reduce((acc, p) => acc + (p.valor - (p.valorPago || 0)), 0)}
+      />
+
+      {/* Modal de Detalhes da Venda */}
+      <ModalDetalhesVenda
+        isOpen={showDetalhesVendaModal}
+        onClose={() => {
+          setShowDetalhesVendaModal(false)
+          setVendaSelecionadaId(null)
+        }}
+        vendaId={vendaSelecionadaId}
+      />
     </div>
   )
 }

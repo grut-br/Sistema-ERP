@@ -52,17 +52,33 @@ class LancamentoSequelizeRepository extends ILancamentoRepository {
     return models.map(Mapper.toDomain);
   }
   
-  async listarPorCliente(clienteId) {
-    const models = await LancamentoModel.findAll({ 
-      where: { idCliente: clienteId },
-      order: [['data_vencimento', 'ASC']]
+  async buscarPorClienteId(idCliente) {
+    const models = await LancamentoModel.findAll({
+      where: { idCliente },
+      order: [['dataVencimento', 'ASC']],
     });
     return models.map(Mapper.toDomain);
   }
 
-  async atualizar(lancamento) {
+  async buscarPorClienteESaldo(idCliente, status, tipo) {
+    const models = await LancamentoModel.findAll({
+      where: {
+        idCliente,
+        status,
+        tipo
+      },
+      order: [
+        ['dataVencimento', 'ASC'], 
+        ['criado_em', 'ASC']
+      ],
+    });
+    return models.map(Mapper.toDomain);
+  }
+
+  async atualizar(lancamento, transaction = null) {
     const data = Mapper.toPersistence(lancamento);
-    await LancamentoModel.update(data, { where: { id: lancamento.id } });
+    const options = transaction ? { where: { id: lancamento.id }, transaction } : { where: { id: lancamento.id } };
+    await LancamentoModel.update(data, options);
     return this.buscarPorId(lancamento.id);
   }
 
