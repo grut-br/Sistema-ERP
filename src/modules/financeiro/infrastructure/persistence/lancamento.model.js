@@ -15,6 +15,7 @@ const LancamentoModel = sequelize.define('Lancamento', {
   dataPagamento: { type: DataTypes.DATEONLY, field: 'data_pagamento' },
   idCliente: { type: DataTypes.INTEGER, field: 'id_cliente' },
   idVenda: { type: DataTypes.INTEGER, field: 'id_venda' },
+  idCompra: { type: DataTypes.INTEGER, field: 'id_compra' },
   // Novos campos para categorização e recorrência
   idCategoria: { type: DataTypes.INTEGER, field: 'id_categoria' },
   frequencia: { 
@@ -33,6 +34,7 @@ LancamentoModel.belongsTo(ClienteModel, { foreignKey: 'idCliente', as: 'cliente'
 LancamentoModel.belongsTo(VendaModel, { foreignKey: 'idVenda' });
 LancamentoModel.belongsTo(CategoriaFinanceiraModel, { foreignKey: 'idCategoria', as: 'categoria' });
 LancamentoModel.belongsTo(LancamentoModel, { foreignKey: 'idPai', as: 'lancamentoPai' });
+// Associação com Compra (não precisa importar CompraModel aqui para evitar ciclo de dependências)
 
 module.exports = LancamentoModel;
 

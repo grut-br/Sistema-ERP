@@ -1,5 +1,5 @@
 class Lancamento {
-  constructor({ id, descricao, valor, tipo, status, dataVencimento, dataPagamento, idCliente, idVenda, idCategoria, frequencia, idPai, valorPago }) {
+  constructor({ id, descricao, valor, tipo, status, dataVencimento, dataPagamento, idCliente, idVenda, idCompra, idCategoria, frequencia, idPai, valorPago }) {
     this.id = id;
     this.descricao = descricao;
     this.valor = parseFloat(valor) || 0;
@@ -9,6 +9,7 @@ class Lancamento {
     this.dataPagamento = dataPagamento;
     this.idCliente = idCliente;
     this.idVenda = idVenda;
+    this.idCompra = idCompra;
     // Novos campos para categorização e recorrência
     this.idCategoria = idCategoria || null;
     this.frequencia = frequencia || 'NENHUMA';

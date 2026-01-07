@@ -93,6 +93,7 @@ class CompraSequelizeRepository extends ICompraRepository {
           tipo: 'DESPESA',
           status: 'PENDENTE',
           idCliente: null, // Não é um cliente
+          idCompra: compraCriada.id, // Vincula ao pedido de compra
           dataVencimento: new Date(), // Idealmente viria da 'compra'
           idCategoria: CATEGORIA_PAGAMENTO_FORNECEDOR, // Categoria automática
         });

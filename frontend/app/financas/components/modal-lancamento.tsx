@@ -26,11 +26,11 @@ export function ModalLancamento({ isOpen, onClose, onSuccess, categorias, lancam
   })
 
   // Verifica se é um lançamento vinculado (fiado ou compra)
-  const isVinculado = lancamentoParaEditar && (lancamentoParaEditar.idVenda || lancamentoParaEditar.idCliente)
+  const isVinculado = lancamentoParaEditar && (lancamentoParaEditar.idVenda || lancamentoParaEditar.idCompra)
   const tipoVinculo = lancamentoParaEditar?.idVenda 
     ? "Fiado (Venda)" 
-    : lancamentoParaEditar?.idCliente 
-      ? "Conta de Compra" 
+    : lancamentoParaEditar?.idCompra 
+      ? "Compra de Fornecedor" 
       : null
 
   // Reset form when modal opens/closes or lancamentoParaEditar changes
@@ -83,13 +83,21 @@ export function ModalLancamento({ isOpen, onClose, onSuccess, categorias, lancam
         : '/api/financeiro'
       
       // Se for vinculado, só envia os campos editáveis
-      const payload = isVinculado ? {
-        dataVencimento: formData.dataVencimento,
-        idCategoria: formData.idCategoria ? parseInt(formData.idCategoria) : null,
-      } : {
-        ...formData,
-        valor: parseFloat(formData.valor),
-        idCategoria: formData.idCategoria ? parseInt(formData.idCategoria) : null,
+      let payload: any
+      if (isVinculado) {
+        payload = {
+          idCategoria: formData.idCategoria ? parseInt(formData.idCategoria) : null,
+        }
+        // Só envia data se tiver valor válido
+        if (formData.dataVencimento) {
+          payload.dataVencimento = formData.dataVencimento
+        }
+      } else {
+        payload = {
+          ...formData,
+          valor: parseFloat(formData.valor),
+          idCategoria: formData.idCategoria ? parseInt(formData.idCategoria) : null,
+        }
       }
 
       const response = await fetch(url, {

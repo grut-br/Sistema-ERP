@@ -26,6 +26,7 @@ const Mapper = {
     dataPagamento: entity.dataPagamento,
     idCliente: entity.idCliente,
     idVenda: entity.idVenda,
+    idCompra: entity.idCompra,
     // Novos campos
     idCategoria: entity.idCategoria,
     frequencia: entity.frequencia,
