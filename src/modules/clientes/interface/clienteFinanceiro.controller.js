@@ -2,6 +2,7 @@ const LancamentoSequelizeRepository = require('../../financeiro/infrastructure/p
 const BuscarPendenciasClienteUseCase = require('../../financeiro/application/buscarPendenciasCliente.usecase');
 const BaixarLancamentoUseCase = require('../../financeiro/application/baixarLancamento.usecase');
 const PagarTodasPendenciasUseCase = require('../application/pagarTodasPendencias.usecase');
+const BuscarExtratoClienteUseCase = require('../application/buscarExtratoCliente.usecase');
 const sequelize = require('../../../shared/infra/database');
 
 /**
@@ -14,11 +15,13 @@ class ClienteFinanceiroController {
     this.buscarPendenciasUseCase = new BuscarPendenciasClienteUseCase(lancamentoRepo);
     this.baixarLancamentoUseCase = new BaixarLancamentoUseCase(lancamentoRepo);
     this.pagarTodasPendenciasUseCase = new PagarTodasPendenciasUseCase(lancamentoRepo, sequelize);
+    this.buscarExtratoUseCase = new BuscarExtratoClienteUseCase(lancamentoRepo);
 
     // Binds
     this.getPendencias = this.getPendencias.bind(this);
     this.baixarLancamento = this.baixarLancamento.bind(this);
     this.pagarTodasPendencias = this.pagarTodasPendencias.bind(this);
+    this.getExtrato = this.getExtrato.bind(this);
   }
 
   /**
@@ -30,6 +33,20 @@ class ClienteFinanceiroController {
       const { id } = req.params;
       const pendencias = await this.buscarPendenciasUseCase.execute(Number(id));
       res.status(200).json(pendencias);
+    } catch (error) {
+      res.status(400).json({ error: error.message });
+    }
+  }
+
+  /**
+   * GET /api/clientes/:id/extrato
+   * Retorna o extrato financeiro unificado (Vendas e Pagamentos)
+   */
+  async getExtrato(req, res) {
+    try {
+      const { id } = req.params;
+      const extrato = await this.buscarExtratoUseCase.execute(Number(id));
+      res.status(200).json(extrato);
     } catch (error) {
       res.status(400).json({ error: error.message });
     }
@@ -82,3 +99,4 @@ class ClienteFinanceiroController {
 }
 
 module.exports = ClienteFinanceiroController;
+

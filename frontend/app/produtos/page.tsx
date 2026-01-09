@@ -155,7 +155,8 @@ export default function ProdutosPage() {
         if (sortOption === 'name-desc') return b.nome.localeCompare(a.nome)
         if (sortOption === 'preco-asc') return a.precoVenda - b.precoVenda
         if (sortOption === 'preco-desc') return b.precoVenda - a.precoVenda
-        
+        if (sortOption === 'estoque-asc') return (a.estoque || 0) - (b.estoque || 0)
+        if (sortOption === 'estoque-desc') return (b.estoque || 0) - (a.estoque || 0)
 
         return 0
       })
@@ -451,6 +452,8 @@ export default function ProdutosPage() {
                     <option value="name-desc">Nome (Z-A)</option>
                     <option value="preco-asc">Preço (Menor - Maior)</option>
                     <option value="preco-desc">Preço (Maior - Menor)</option>
+                    <option value="estoque-asc">Estoque (Menor - Maior)</option>
+                    <option value="estoque-desc">Estoque (Maior - Menor)</option>
                   </select>
               </div>
               </>

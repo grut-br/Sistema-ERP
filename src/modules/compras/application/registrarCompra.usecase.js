@@ -16,7 +16,7 @@ class RegistrarCompraUseCase {
     this.criarLancamentoUseCase = new CriarLancamentoUseCase(lancamentoRepo);
   }
 
-  async execute({ idFornecedor, dataCompra, observacoes, itens, numeroNota }) {
+  async execute({ idFornecedor, dataCompra, observacoes, itens, numeroNota, formaPagamento, qtdParcelas, intervaloParcelas, dataPrimeiroVencimento, statusPagamento }) {
     if (!idFornecedor || !itens || itens.length === 0) {
       throw new Error('Fornecedor e pelo menos um item são obrigatórios.');
     }
@@ -45,12 +45,48 @@ class RegistrarCompraUseCase {
         idProduto: item.idProduto,
         quantidade: item.quantidade,
         custoUnitario: item.custoUnitario,
-        validade: item.validade, // <-- Novo
+        validade: item.validade,
         produto: produto,
       }));
     }
 
-    // 2. Cria a entidade de Compra
+    // 2. Calcula as parcelas (Contas a Pagar)
+    const contasAPagar = [];
+    const qtd = Number(qtdParcelas) || 1;
+    const valorParcela = valorTotal / qtd; // Simples divisão (pode haver dízima, tratado no banco ou arredondamento)
+    
+    let dataBase = new Date(dataPrimeiroVencimento || new Date());
+    // Garantir que a dataBase não tenha "Invalid Date"
+    if (isNaN(dataBase.getTime())) dataBase = new Date();
+
+    for (let i = 0; i < qtd; i++) {
+        const vencimento = new Date(dataBase);
+        
+        if (intervaloParcelas === 'MENSAL') {
+            // Adiciona i meses
+            vencimento.setMonth(vencimento.getMonth() + i);
+        } else if (intervaloParcelas === 'QUINZENAL') {
+            // Adiciona i * 15 dias
+            vencimento.setDate(vencimento.getDate() + (i * 15));
+        }
+        
+        let descricao = `${fornecedor.nome} - Compra N° ##ID##`;
+        if (qtd > 1) {
+            descricao += ` (Parc. ${i+1}/${qtd})`;
+        }
+
+        contasAPagar.push({
+            descricao: descricao,
+            valor: valorParcela,
+            dataVencimento: vencimento,
+            status: statusPagamento || 'PENDENTE',
+            fornecedorNome: fornecedor.nome,
+            parcela: i+1,
+            totalParcelas: qtd
+        });
+    }
+
+    // 3. Cria a entidade de Compra
     const novaCompra = new Compra({
       idFornecedor,
       dataCompra,
@@ -60,9 +96,10 @@ class RegistrarCompraUseCase {
       valorTotal,
     });
 
-    // 3. Passa a compra e os casos de uso para o repositório
+    // 4. Passa a compra e os casos de uso para o repositório
     return this.compraRepository.salvar(novaCompra, {
-      criarLancamentoUseCase: this.criarLancamentoUseCase
+      criarLancamentoUseCase: this.criarLancamentoUseCase,
+      contasAPagar // Array com as parcelas geradas
     });
   }
 }

@@ -61,9 +61,10 @@ class ProdutoController {
   }
 
   //buscar todos
-  async getAll(req, res) {
+    async getAll(req, res) {
     try {
-      const produtos = await this.buscarTodosProdutosUseCase.execute();
+      const filters = req.query; // Capture query params (e.g., status=ATIVO)
+      const produtos = await this.buscarTodosProdutosUseCase.execute(filters);
       return res.status(200).json(produtos);
     } catch (error) {
       console.error(error);

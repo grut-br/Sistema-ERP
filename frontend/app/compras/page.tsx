@@ -8,6 +8,7 @@ import { Pagination } from "@/components/Pagination"
 import { ModalFornecedor } from "./components/modal-fornecedor"
 import { ModalNovaEntrada } from "./components/modal-nova-entrada"
 import { ModalDetalhesCompra } from "./components/modal-detalhes-compra"
+import { ModalCadastroProduto } from "../produtos/components/modal-cadastro-produto"
 import "./compras.css"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -55,11 +56,17 @@ export default function ComprasPage() {
   const [showNewEntradaModal, setShowNewEntradaModal] = useState(false)
   const [showDetalhesModal, setShowDetalhesModal] = useState(false)
   const [selectedCompraId, setSelectedCompraId] = useState<number | null>(null)
+  const [showNovoProdutoModal, setShowNovoProdutoModal] = useState(false)
 
   const [showNewFornecedorModal, setShowNewFornecedorModal] = useState(false)
   const [fornecedorToEdit, setFornecedorToEdit] = useState<any | null>(null)
   const [supplierToDelete, setSupplierToDelete] = useState<any | null>(null)
   const [isDeletingSupplier, setIsDeletingSupplier] = useState(false)
+
+  // -- Compra Edit/Delete State --
+  const [compraToEdit, setCompraToEdit] = useState<any | null>(null)
+  const [compraToDelete, setCompraToDelete] = useState<any | null>(null)
+  const [isDeletingCompra, setIsDeletingCompra] = useState(false)
 
   // -- Sorting (Fornecedores) --
   const [sortOptionFornecedor, setSortOptionFornecedor] = useState("name-asc")
@@ -198,6 +205,40 @@ export default function ComprasPage() {
         toast({ title: "Erro", description: msg, variant: "destructive" })
     } finally {
         setIsDeletingSupplier(false)
+    }
+  }
+
+  const handleConfirmDeleteCompra = async () => {
+    if (!compraToDelete) return
+    setIsDeletingCompra(true)
+    try {
+        const response = await fetch(`/api/compras/${compraToDelete.id}`, {
+            method: 'DELETE'
+        })
+        const data = await response.json()
+        if (!response.ok) throw new Error(data.error || 'Falha ao estornar compra')
+        
+        toast({ title: "Sucesso", description: "Compra estornada com sucesso." })
+        fetchCompras()
+        setCompraToDelete(null)
+    } catch (e: any) {
+        console.error(e)
+        toast({ title: "Erro", description: e.message || "Erro ao estornar compra", variant: "destructive" })
+    } finally {
+        setIsDeletingCompra(false)
+    }
+  }
+
+  const handleEditCompra = async (compraId: number) => {
+    try {
+      const response = await fetch(`/api/compras/${compraId}`)
+      if (!response.ok) throw new Error('Falha ao carregar dados da compra')
+      const compraCompleta = await response.json()
+      setCompraToEdit(compraCompleta)
+      setShowNewEntradaModal(true)
+    } catch (e: any) {
+      console.error(e)
+      toast({ title: "Erro", description: e.message || "Erro ao carregar compra para edição", variant: "destructive" })
     }
   }
 
@@ -417,6 +458,7 @@ export default function ComprasPage() {
                             <thead>
                                 <tr>
                                     <th className="text-center whitespace-nowrap">Ações</th>
+                                    <th className="whitespace-nowrap">Nº</th>
                                     <th className="whitespace-nowrap">Data</th>
                                     <th className="whitespace-nowrap">Fornecedor</th>
                                     <th className="whitespace-nowrap">Nota Fiscal</th>
@@ -426,9 +468,9 @@ export default function ComprasPage() {
                             </thead>
                             <tbody>
                                 {isLoading ? (
-                                    <tr><td colSpan={6} className="text-center py-8">Carregando...</td></tr>
+                                    <tr><td colSpan={7} className="text-center py-8">Carregando...</td></tr>
                                 ) : currentDisplayItems.length === 0 ? (
-                                    <tr><td colSpan={6} className="text-center py-8">Nenhuma entrada encontrada</td></tr>
+                                    <tr><td colSpan={7} className="text-center py-8">Nenhuma entrada encontrada</td></tr>
                                 ) : currentDisplayItems.map((compra: any) => (
                                     <tr key={compra.id}>
                                         <td>
@@ -443,8 +485,23 @@ export default function ComprasPage() {
                                               >
                                                 <Eye size={18} />
                                               </button>
+                                              <button 
+                                                className="p-1 text-amber-500 hover:bg-amber-50 rounded-md transition-colors"
+                                                title="Editar"
+                                                onClick={() => handleEditCompra(compra.id)}
+                                              >
+                                                <Pencil size={18} />
+                                              </button>
+                                              <button 
+                                                className="p-1 text-red-500 hover:bg-red-50 rounded-md transition-colors"
+                                                title="Estornar"
+                                                onClick={() => setCompraToDelete(compra)}
+                                              >
+                                                <Trash2 size={18} />
+                                              </button>
                                           </div>
                                         </td>
+                                        <td className="whitespace-nowrap text-center font-mono text-sm text-gray-500">{compra.id}</td>
                                         <td className="whitespace-nowrap">
                                             {compra.dataCompra ? new Date(compra.dataCompra + 'T00:00:00').toLocaleDateString('pt-BR') : "-"}
                                         </td>
@@ -536,17 +593,32 @@ export default function ComprasPage() {
 
       <ModalNovaEntrada
         isOpen={showNewEntradaModal}
-        onClose={() => setShowNewEntradaModal(false)}
+        onClose={() => {
+           setShowNewEntradaModal(false)
+           setCompraToEdit(null)
+        }}
         onSuccess={() => {
            fetchCompras()
            toast({ title: "Sucesso", description: "Lista de entradas atualizada." })
+           setCompraToEdit(null)
         }}
+        onNovoProduto={() => setShowNovoProdutoModal(true)}
+        compraParaEditar={compraToEdit}
       />
 
       <ModalDetalhesCompra 
         isOpen={showDetalhesModal}
         onClose={() => setShowDetalhesModal(false)}
         compraId={selectedCompraId}
+      />
+
+      <ModalCadastroProduto
+        isOpen={showNovoProdutoModal}
+        onClose={() => setShowNovoProdutoModal(false)}
+        onSuccess={() => {
+          fetchProdutos()
+          setShowNovoProdutoModal(false)
+        }}
       />
 
        {supplierToDelete && (
@@ -558,6 +630,27 @@ export default function ComprasPage() {
                     <button className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded" onClick={() => setSupplierToDelete(null)}>Cancelar</button>
                     <button className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600" onClick={handleConfirmDeleteSupplier} disabled={isDeletingSupplier}>
                         {isDeletingSupplier ? 'Excluindo...' : 'Excluir'}
+                    </button>
+                </div>
+            </div>
+         </div>
+       )}
+
+       {compraToDelete && (
+         <div className="modal-overlay" style={{zIndex: 50}}>
+            <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4">
+                <h3 className="text-lg font-bold mb-2 text-red-600">Estornar Compra</h3>
+                <p className="mb-4 text-sm text-gray-600">
+                    Deseja realmente estornar esta compra? <br/>
+                    <b className="text-gray-800">NF #{compraToDelete.notaFiscal}</b> - {compraToDelete.fornecedor?.nome}
+                </p>
+                <p className="mb-4 text-xs bg-amber-50 border border-amber-200 text-amber-800 p-3 rounded">
+                    ⚠️ Isso removerá os produtos do estoque e cancelará os lançamentos financeiros.
+                </p>
+                <div className="flex justify-end gap-2">
+                    <button className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded" onClick={() => setCompraToDelete(null)}>Cancelar</button>
+                    <button className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600" onClick={handleConfirmDeleteCompra} disabled={isDeletingCompra}>
+                        {isDeletingCompra ? 'Estornando...' : 'Confirmar Estorno'}
                     </button>
                 </div>
             </div>

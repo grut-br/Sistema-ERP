@@ -86,18 +86,44 @@ class CompraSequelizeRepository extends ICompraRepository {
       }
 
       // 4. Integração Financeira (Cria a Conta a Pagar)
+      // 4. Integração Financeira (Cria Parcelas/Contas a Pagar)
       if (criarLancamentoUseCase) {
-        const dadosContaPagar = new Lancamento({
-          descricao: `Compra de Fornecedor - Pedido #${compraCriada.id}`,
-          valor: compra.valorTotal,
-          tipo: 'DESPESA',
-          status: 'PENDENTE',
-          idCliente: null, // Não é um cliente
-          idCompra: compraCriada.id, // Vincula ao pedido de compra
-          dataVencimento: new Date(), // Idealmente viria da 'compra'
-          idCategoria: CATEGORIA_PAGAMENTO_FORNECEDOR, // Categoria automática
-        });
-        await criarLancamentoUseCase.execute(dadosContaPagar, { transaction: t });
+         const { contasAPagar } = useCases;
+         
+         if (contasAPagar && contasAPagar.length > 0) {
+             for (const conta of contasAPagar) {
+                 // Build description with actual compra ID
+                 let descricao = `${conta.fornecedorNome || 'Fornecedor'} - Compra N° ${compraCriada.id}`;
+                 if (conta.totalParcelas > 1) {
+                   descricao += ` (Parc. ${conta.parcela}/${conta.totalParcelas})`;
+                 }
+                 
+                 const dadosContaPagar = new Lancamento({
+                    descricao: descricao,
+                    valor: conta.valor || compra.valorTotal,
+                    tipo: 'DESPESA',
+                    status: conta.status || 'PENDENTE',
+                    idCliente: null,
+                    idCompra: compraCriada.id,
+                    dataVencimento: conta.dataVencimento || new Date(),
+                    idCategoria: CATEGORIA_PAGAMENTO_FORNECEDOR
+                 });
+                 await criarLancamentoUseCase.execute(dadosContaPagar, { transaction: t });
+             }
+         } else {
+            // Fallback: Default Behavior if no installments provided
+            const dadosContaPagar = new Lancamento({
+              descricao: `Compra de Fornecedor - Pedido #${compraCriada.id}`,
+              valor: compra.valorTotal,
+              tipo: 'DESPESA',
+              status: 'PENDENTE',
+              idCliente: null, // Não é um cliente
+              idCompra: compraCriada.id, // Vincula ao pedido de compra
+              dataVencimento: new Date(), // Idealmente viria da 'compra'
+              idCategoria: CATEGORIA_PAGAMENTO_FORNECEDOR, // Categoria automática
+            });
+            await criarLancamentoUseCase.execute(dadosContaPagar, { transaction: t });
+         }
       }
 
       await t.commit(); // Confirma a transação
@@ -172,7 +198,7 @@ class CompraSequelizeRepository extends ICompraRepository {
 
     const comprasModel = await CompraModel.findAll({
       where,
-      order: [['dataCompra', sortOrder]],
+      order: [['dataCompra', sortOrder], ['id', sortOrder]],
       include,
       subQuery: false // Important when filtering by associated tables with limit/offset (though no pagination here yet)
     });

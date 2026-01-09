@@ -103,9 +103,9 @@ export function ModalPagamentoGeral({ isOpen, onClose, onSuccess, clienteId, tot
 
   return (
     <div className="modal-overlay" style={{zIndex: 60}}>
-      <div className="modal-content max-w-lg">
+      <div className="modal-content" style={{ maxWidth: '500px' }}>
         <div className="modal-header">
-          <h2 className="flex items-center gap-2">
+          <h2 className="flex items-center gap-1">
             <DollarSign size={24} className="text-green-600" />
             Pagar Todas as Dívidas
           </h2>
@@ -180,18 +180,23 @@ export function ModalPagamentoGeral({ isOpen, onClose, onSuccess, clienteId, tot
               </select>
             </div>
 
-            <div className="form-actions">
-              <button type="button" className="btn-cancel" onClick={onClose}>
-                Cancelar
-              </button>
+            <div className="flex justify-end gap-3 mt-6"> {/* Adicionei flex e gap para separar os botões */}
               <button 
-                type="submit" 
-                className="btn-submit bg-green-600 hover:bg-green-700 text-white" 
-                disabled={isSubmitting}
+                  type="button" 
+                  className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors" // Estilizei o Cancelar também
+                  onClick={onClose}
               >
-                {isSubmitting ? "Processando..." : "Confirmar Pagamento"}
+                  Cancelar
               </button>
-            </div>
+              
+              <button
+                  type="submit"
+                  className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded transition-colors disabled:opacity-50" // Adicionei px-4 py-2
+                  disabled={isSubmitting}
+              >
+                  {isSubmitting ? "Processando..." : "Confirmar Pagamento"}
+              </button>
+          </div>
           </form>
         ) : (
           <div className="space-y-4">

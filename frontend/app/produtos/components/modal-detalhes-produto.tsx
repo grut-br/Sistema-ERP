@@ -23,7 +23,7 @@ export function ModalDetalhesProduto({ isOpen, onClose, produto, onEdit, onDelet
   return (
     <div className="modal-overlay" onClick={onClose}>
       {/* Added 'large' class to match Edit Modal width */}
-      <div className="modal-content large" onClick={e => e.stopPropagation()}>
+      <div className="modal-content large !p-0" onClick={e => e.stopPropagation()}>
         
         {/* Header - Keeping it darker to distinguish 'View' from 'Edit' mode */}
         <div className="bg-slate-700 text-white p-6 rounded-t-xl flex justify-between items-center">
@@ -99,7 +99,7 @@ export function ModalDetalhesProduto({ isOpen, onClose, produto, onEdit, onDelet
                  </div>
 
                  <div className="col-span-3">
-                    <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Preço de Custo</label>
+                    <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Custo Médio</label>
                     <p className="text-lg font-medium text-gray-600">
                         {formatMoney(produto.precoCusto)}
                     </p>

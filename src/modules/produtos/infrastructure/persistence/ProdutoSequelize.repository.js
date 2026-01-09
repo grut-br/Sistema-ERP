@@ -26,6 +26,7 @@ const ProdutoMapper = {
       id_fabricante: model.idFabricante,
       fabricante: model.fabricante, // Objeto fabricante
       precoVenda: model.precoVenda,
+      // precoCusto field removed to avoid DB consistency issues; calculated in Entity
       lotes: model.lotes ? model.lotes.map(LoteMapper.toDomain) : [],
       codigoBarras: model.codigoBarras,
       urlImagem: model.urlImagem,
@@ -80,8 +81,14 @@ class ProdutoSequelizeRepository extends IProdutoRepository {
 
     return produto;  }
 
-  async listarTodos() {
+  async listarTodos(filters = {}) {
+    const where = {};
+    if (filters.status) {
+      where.status = filters.status;
+    }
+
     const produtosModel = await ProdutoModel.findAll({
+      where,
       include: [
         { model: CategoriaModel, as: 'categoria' },
         { model: FabricanteModel, as: 'fabricante' },
@@ -116,7 +123,16 @@ class ProdutoSequelizeRepository extends IProdutoRepository {
     if (!produtoModel) {
       throw new Error('Produto não encontrado.');
     }
-    await produtoModel.destroy();
+    try {
+      await produtoModel.destroy();
+    } catch (error) {
+      // Se houver erro de chave estrangeira (vínculos com vendas/compras), inativa o produto
+      if (error.name === 'SequelizeForeignKeyConstraintError') {
+        await produtoModel.update({ status: 'INATIVO' });
+      } else {
+        throw error;
+      }
+    }
   }
 
   async buscarLotesProximosDoVencimento(dias, options = {}) {

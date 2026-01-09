@@ -16,8 +16,8 @@ const IVendaRepository = require('../../domain/repositories/IVendaRepository');
 // 1: Venda de Produtos (RECEITA)
 // 2: Fiado Cliente (RECEITA)
 // 3: Pagamento Fornecedor (DESPESA)
-const CATEGORIA_VENDA_PRODUTOS = 1;
-const CATEGORIA_FIADO_CLIENTE = 2;
+const CATEGORIA_VENDA_PRODUTOS = 7; // Ajustado conforme DB (Vendas)
+const CATEGORIA_FIADO_CLIENTE = 1; // Ajustado conforme DB (Fiado Cliente é ID 1)
 
 
 // Mapper ATUALIZADO

@@ -11,5 +11,7 @@ compraRoutes.use(authMiddleware);
 compraRoutes.post('/', controller.create);
 compraRoutes.get('/', controller.getAll);
 compraRoutes.get('/:id', controller.getById);
+compraRoutes.put('/:id', controller.update);
+compraRoutes.delete('/:id', controller.delete);
 
 module.exports = compraRoutes;

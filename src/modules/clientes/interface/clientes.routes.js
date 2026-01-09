@@ -16,6 +16,7 @@ clienteRoutes.get('/', controller.getAll);
 clienteRoutes.get('/:id/info-financeira', controller.getFinancialInfo);
 clienteRoutes.get('/:id/pendencias', financeiroController.getPendencias);
 clienteRoutes.post('/:id/pendencias/pagar-todas', financeiroController.pagarTodasPendencias);
+clienteRoutes.get('/:id/extrato', financeiroController.getExtrato);
 clienteRoutes.get('/:id/historico-compras', controller.getHistoricoCompras);
 clienteRoutes.get('/:id/enderecos', controller.getEnderecos);
 clienteRoutes.post('/:id/enderecos', controller.addEndereco);

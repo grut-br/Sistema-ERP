@@ -9,6 +9,16 @@ class AtualizarClienteUseCase {
       throw new Error('Cliente não encontrado.');
     }
 
+    // Sanitize data
+    if (dadosParaAtualizar.dataNascimento === '' || dadosParaAtualizar.dataNascimento === 'Invalid date') {
+        dadosParaAtualizar.dataNascimento = null;
+    }
+    if (dadosParaAtualizar.email === '') dadosParaAtualizar.email = null;
+    if (dadosParaAtualizar.cpf === '') dadosParaAtualizar.cpf = null; // Fix: convert empty CPF to null to avoid unique constraint error
+    if (dadosParaAtualizar.genero === '' || dadosParaAtualizar.genero === 'NAO_INFORMAR') {
+        dadosParaAtualizar.genero = null;
+    }
+
     Object.assign(cliente, dadosParaAtualizar);
     cliente.validar();
 

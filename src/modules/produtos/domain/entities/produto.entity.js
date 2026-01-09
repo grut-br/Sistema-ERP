@@ -21,6 +21,17 @@ class Produto {
     this.lotes = lotes || [];
     this.estoque = this.lotes.reduce((acc, lote) => acc + (lote.quantidade || 0), 0);
 
+    // Calculate Weighted Average Cost
+    const totalEstoque = this.lotes.reduce((acc, lote) => acc + Number(lote.quantidade), 0);
+    const valorTotal = this.lotes.reduce((acc, lote) => acc + (Number(lote.quantidade) * Number(lote.custoUnitario || 0)), 0);
+    
+    // If we have lots, calculate average. Otherwise, use provided precoCusto (from DB cache) or 0
+    if (totalEstoque > 0) {
+      this.precoCusto = valorTotal / totalEstoque;
+    } else {
+      this.precoCusto = Number(precoCusto) || 0;
+    }
+
 
     this.validar();
   }

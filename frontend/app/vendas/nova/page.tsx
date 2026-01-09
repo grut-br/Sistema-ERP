@@ -22,6 +22,7 @@ import {
 import { cn } from "@/lib/utils"
 // Import Modal Checkout (to be created)
 import { ModalCheckout } from "../components/modal-checkout"
+import { ModalCadastroCliente } from "../../clientes/components/ModalCadastroCliente"
 import "../vendas.css"
 
 export default function NovaVendaPage() {
@@ -35,6 +36,7 @@ export default function NovaVendaPage() {
   const [comboboxClienteOpen, setComboboxClienteOpen] = useState(false)
   const [comboboxProdutoOpen, setComboboxProdutoOpen] = useState(false)
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false)
+  const [isModalClienteOpen, setIsModalClienteOpen] = useState(false)
 
   // -- Transaction State --
   const [selectedCliente, setSelectedCliente] = useState<any | null>(null)
@@ -58,7 +60,7 @@ export default function NovaVendaPage() {
     try {
         const [resClientes, resProdutos] = await Promise.all([
             fetch('/api/clientes'),
-            fetch('/api/produtos')
+            fetch('/api/produtos?status=ATIVO')
         ])
         if (resClientes.ok) setClientesList(await resClientes.json())
         if (resProdutos.ok) setProdutosList(await resProdutos.json())
@@ -270,7 +272,16 @@ export default function NovaVendaPage() {
             
             {/* 1. Cliente Selection */}
             <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
-                <h3 className="text-sm font-semibold text-gray-500 uppercase mb-3">Cliente</h3>
+                <div className="flex justify-between items-center mb-3">
+                    <h3 className="text-sm font-semibold text-gray-500 uppercase">Cliente</h3>
+                    <button 
+                        onClick={() => setIsModalClienteOpen(true)}
+                        className="text-xs font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-1 bg-emerald-50 px-2 py-1 rounded"
+                    >
+                        <Plus size={12} />
+                        Novo Cliente
+                    </button>
+                </div>
                 <Popover open={comboboxClienteOpen} onOpenChange={setComboboxClienteOpen}>
                     <PopoverTrigger asChild>
                       <Button
@@ -492,6 +503,24 @@ export default function NovaVendaPage() {
          cliente={{...selectedCliente, ...clientFinancials}} 
          cartItems={cart}
          onSuccess={handleFinalizeSuccess}
+         clientesList={clientesList}
+         onClienteChange={handleSelectCliente}
+         onNovoCliente={() => setIsModalClienteOpen(true)}
+      />
+
+      {/* Modal de Cadastro de Cliente */}
+      <ModalCadastroCliente
+        isOpen={isModalClienteOpen}
+        onClose={() => setIsModalClienteOpen(false)}
+        cliente={null}
+        onSuccess={(novoCliente) => {
+            if (novoCliente) {
+                setClientesList(prev => [...prev, novoCliente]) // Atualiza a lista local
+                handleSelectCliente(novoCliente) // Seleciona automaticamente
+                toast({ title: "Sucesso", description: `Cliente ${novoCliente.nome} cadastrado e selecionado!` })
+            }
+            setIsModalClienteOpen(false)
+        }}
       />
     </div>
   )

@@ -2,9 +2,10 @@ const CompraSequelizeRepository = require('../infrastructure/persistence/compraS
 const ProdutoSequelizeRepository = require('../../produtos/infrastructure/persistence/ProdutoSequelize.repository');
 const FornecedorSequelizeRepository = require('../../fornecedores/infrastructure/persistence/FornecedorSequelize.repository');
 const RegistrarCompraUseCase = require('../application/registrarCompra.usecase');
-// ... (imports existentes)
 const BuscarCompraPorIdUseCase = require('../application/buscarCompraPorId.usecase');
 const ListarComprasUseCase = require('../application/listarCompras.usecase');
+const ExcluirCompraUseCase = require('../application/excluirCompra.usecase');
+const EditarCompraUseCase = require('../application/editarCompra.usecase');
 
 class CompraController {
   constructor() {
@@ -13,14 +14,16 @@ class CompraController {
     const fornecedorRepo = new FornecedorSequelizeRepository();
 
     this.registrarCompraUseCase = new RegistrarCompraUseCase(compraRepo, produtoRepo, fornecedorRepo);
-    // Instancia os novos casos de uso
     this.buscarCompraPorIdUseCase = new BuscarCompraPorIdUseCase(compraRepo);
     this.listarComprasUseCase = new ListarComprasUseCase(compraRepo);
+    this.excluirCompraUseCase = new ExcluirCompraUseCase(compraRepo);
+    this.editarCompraUseCase = new EditarCompraUseCase(compraRepo, produtoRepo, fornecedorRepo);
     
     this.create = this.create.bind(this);
-    // Faz o bind dos novos métodos
     this.getById = this.getById.bind(this);
     this.getAll = this.getAll.bind(this);
+    this.delete = this.delete.bind(this);
+    this.update = this.update.bind(this);
   }
 
   async create(req, res) {
@@ -32,7 +35,6 @@ class CompraController {
     }
   }
   
-  // Novo método para buscar por ID
   async getById(req, res) {
     try {
       const { id } = req.params;
@@ -43,15 +45,14 @@ class CompraController {
     }
   }
 
-  // Novo método para buscar todos
   async getAll(req, res) {
     try {
       const filters = {
         idFornecedor: req.query.idFornecedor,
-        notaFiscal: req.query.notaFiscal, // Specific NF filter
-        search: req.query.search,         // Unified Top bar search
+        notaFiscal: req.query.notaFiscal,
+        search: req.query.search,
         idProduto: req.query.idProduto,
-        sort: req.query.sort,             // 'ASC' | 'DESC'
+        sort: req.query.sort,
         dataInicio: req.query.dataInicio,
         dataFim: req.query.dataFim
       };
@@ -59,6 +60,26 @@ class CompraController {
       res.status(200).json(compras);
     } catch (error) {
       res.status(500).json({ error: error.message });
+    }
+  }
+
+  async delete(req, res) {
+    try {
+      const { id } = req.params;
+      const result = await this.excluirCompraUseCase.execute(Number(id));
+      res.status(200).json(result);
+    } catch (error) {
+      res.status(400).json({ error: error.message });
+    }
+  }
+
+  async update(req, res) {
+    try {
+      const { id } = req.params;
+      const compra = await this.editarCompraUseCase.execute(Number(id), req.body);
+      res.status(200).json(compra);
+    } catch (error) {
+      res.status(400).json({ error: error.message });
     }
   }
 }

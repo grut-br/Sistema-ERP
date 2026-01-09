@@ -17,8 +17,17 @@ class CriarClienteUseCase {
     const t = await sequelize.transaction();
 
     try {
-      // 1. Create Cliente
-      const novoCliente = new Cliente(dadosCliente);
+      // 1. Sanitize Data
+      const clienteData = { ...dadosCliente };
+      if (!clienteData.dataNascimento || clienteData.dataNascimento === 'Invalid date' || clienteData.dataNascimento === '') {
+        clienteData.dataNascimento = null;
+      }
+      if (clienteData.email === '') clienteData.email = null;
+      if (clienteData.cpf === '') clienteData.cpf = null; // Fix: convert empty CPF to null to avoid unique constraint error
+      if (clienteData.genero === '') clienteData.genero = null;
+      if (clienteData.genero === 'NAO_INFORMAR') clienteData.genero = null; // Optional: standardize
+
+      const novoCliente = new Cliente(clienteData);
       const clienteSalvo = await this.clienteRepository.salvar(novoCliente, t);
 
       // 2. Create Endereços

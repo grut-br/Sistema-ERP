@@ -346,19 +346,21 @@ export default function FinancasPage() {
           </aside>
 
           <div className="table-section">
-            <div className="tabs-container">
-              <button 
-                className={`tab ${activeTab === 'lancamentos' ? 'active' : ''}`}
-                onClick={() => handleTabs('lancamentos')}
-              >
-                Lançamentos
-              </button>
-              <button 
-                className={`tab ${activeTab === 'categorias' ? 'active' : ''}`}
-                onClick={() => handleTabs('categorias')}
-              >
-                Categorias
-              </button>
+            <div className="flex justify-between items-center mb-6">
+              <div className="tabs-container !mb-0">
+                <button 
+                  className={`tab ${activeTab === 'lancamentos' ? 'active' : ''}`}
+                  onClick={() => handleTabs('lancamentos')}
+                >
+                  Lançamentos
+                </button>
+                <button 
+                  className={`tab ${activeTab === 'categorias' ? 'active' : ''}`}
+                  onClick={() => handleTabs('categorias')}
+                >
+                  Categorias
+                </button>
+              </div>
 
               {activeTab === 'lancamentos' && (
                 <button className="btn-cadastrar" onClick={() => {
@@ -384,12 +386,12 @@ export default function FinancasPage() {
                   <thead>
                     <tr>
                       <th className="text-center whitespace-nowrap">Ações</th>
+                      <th className="whitespace-nowrap">Categoria</th>
                       <th className="whitespace-nowrap">Descrição</th>
                       <th className="whitespace-nowrap">Valor</th>
                       <th className="whitespace-nowrap">Tipo</th>
                       <th className="whitespace-nowrap">Status</th>
                       <th className="whitespace-nowrap">Vencimento</th>
-                      <th className="whitespace-nowrap">Categoria</th>
                       <th className="whitespace-nowrap">Recorrência</th>
                     </tr>
                   </thead>
@@ -431,6 +433,19 @@ export default function FinancasPage() {
                               </button>
                             </div>
                           </td>
+                          <td>
+                            {categoria ? (
+                              <span className="category-tag">
+                                <span 
+                                  className="category-color" 
+                                  style={{ backgroundColor: categoria.cor }}
+                                />
+                                {categoria.nome}
+                              </span>
+                            ) : (
+                              <span className="text-gray-400 text-sm">-</span>
+                            )}
+                          </td>
                           <td className="whitespace-nowrap font-medium">
                             {lancamento.descricao}
                           </td>
@@ -456,19 +471,6 @@ export default function FinancasPage() {
                           <td className={`whitespace-nowrap ${vencido ? 'text-red-600 font-semibold' : ''}`}>
                             {formatDate(lancamento.dataVencimento)}
                             {vencido && <span className="ml-1 text-xs">(Vencido)</span>}
-                          </td>
-                          <td>
-                            {categoria ? (
-                              <span className="category-tag">
-                                <span 
-                                  className="category-color" 
-                                  style={{ backgroundColor: categoria.cor }}
-                                />
-                                {categoria.nome}
-                              </span>
-                            ) : (
-                              <span className="text-gray-400 text-sm">-</span>
-                            )}
                           </td>
                           <td>
                             {lancamento.frequencia && lancamento.frequencia !== 'NENHUMA' ? (

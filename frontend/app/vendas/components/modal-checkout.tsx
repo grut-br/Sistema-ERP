@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { X, Trophy, AlertTriangle, AlertCircle, Trash2 } from "lucide-react"
+import { X, Trophy, AlertTriangle, AlertCircle, Trash2, UserPlus } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { Switch } from "@/components/ui/switch"
 
@@ -14,9 +14,12 @@ interface ModalCheckoutProps {
   cliente: any | null
   cartItems: any[]
   onSuccess: () => void
+  clientesList?: any[]
+  onClienteChange?: (cliente: any) => void
+  onNovoCliente?: () => void
 }
 
-export function ModalCheckout({ isOpen, onClose, cartTotal, subtotalOriginal, discountValue, cliente, cartItems, onSuccess }: ModalCheckoutProps) {
+export function ModalCheckout({ isOpen, onClose, cartTotal, subtotalOriginal, discountValue, cliente, cartItems, onSuccess, clientesList = [], onClienteChange, onNovoCliente }: ModalCheckoutProps) {
   const { toast } = useToast()
   
   // -- Payment State --
@@ -186,57 +189,11 @@ export function ModalCheckout({ isOpen, onClose, cartTotal, subtotalOriginal, di
         <div className="w-1/3 bg-gray-50 border-r border-gray-200 p-6 flex flex-col">
             <h2 className="text-xl font-bold text-gray-800 mb-6">Resumo</h2>
             
-            {cliente && (
-                <div className="mb-6 bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+            {/* Cliente selecionado - apenas nome */}
+            {cliente && cliente.id && (
+                <div className="mb-6 bg-white p-4 rounded-lg border border-gray-200">
                     <div className="text-sm text-gray-500 mb-1">Cliente</div>
                     <div className="font-bold text-gray-800">{cliente.nome}</div>
-                    
-                        {cliente.pontos > 0 && (
-                            <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between">
-                                <div className="flex items-center gap-2 text-purple-600 text-sm font-medium">
-                                    <Trophy size={16} />
-                                    <span>{cliente.pontos} Pts</span>
-                                </div>
-                                <button 
-                                    className={`text-xs px-2 py-1 rounded font-bold border transition-colors ${usarFidelidade 
-                                        ? 'bg-red-100 text-red-600 border-red-200' 
-                                        : 'bg-green-100 text-green-600 border-green-200'}`}
-                                    onClick={() => setUsarFidelidade(!usarFidelidade)}
-                                >
-                                    {usarFidelidade ? 'Remover' : `Resgatar R$ ${valorPontosDisponivel.toFixed(2)}`}
-                                </button>
-                             </div>
-                        )}
-                        
-                        {/* Credits Info */}
-                        {cliente && creditoDisponivel > 0 && (
-                             <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between">
-                                <div className="flex items-center gap-2 text-emerald-600 text-sm font-medium">
-                                    <span>💰</span>
-                                    <span>Saldo Crédito</span>
-                                </div>
-                                <button 
-                                    className={`text-xs px-2 py-1 rounded font-bold border transition-colors ${usarCredito 
-                                        ? 'bg-red-100 text-red-600 border-red-200' 
-                                        : 'bg-emerald-100 text-emerald-600 border-emerald-200'}`}
-                                    onClick={() => {
-                                        if (!usarCredito) {
-                                            // Usa até o valor necessário (restante) ou o crédito total
-                                            const valorUsar = Math.min(creditoDisponivel, restante > 0 ? restante : finalTotal)
-                                            if (valorUsar > 0) {
-                                                setPagamentos([...pagamentos, { metodo: 'CREDITO', valor: valorUsar, salvarTrocoCredito: false }])
-                                            }
-                                        } else {
-                                            // Remove o pagamento com crédito
-                                            setPagamentos(pagamentos.filter(p => p.metodo !== 'CREDITO'))
-                                        }
-                                        setUsarCredito(!usarCredito)
-                                    }}
-                                >
-                                    {usarCredito ? 'Remover' : `Usar ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Math.min(creditoDisponivel, restante > 0 ? restante : finalTotal))}`}
-                                </button>
-                             </div>
-                        )}
                 </div>
             )}
 
@@ -264,14 +221,113 @@ export function ModalCheckout({ isOpen, onClose, cartTotal, subtotalOriginal, di
             </div>
         </div>
 
-        {/* Right: Payments */}
-        <div className="w-2/3 p-8 flex flex-col">
-             <div className="flex justify-between items-start mb-6">
-                <h2 className="text-2xl font-bold text-gray-800">Pagamento</h2>
+        {/* Right: Client + Payments */}
+        <div className="w-2/3 p-6 flex flex-col overflow-hidden">
+             {/* Header with Close Button */}
+             <div className="flex justify-end mb-4">
                 <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
                     <X size={24} />
                 </button>
              </div>
+
+             {/* Client Selection Section */}
+             <div className="mb-6 bg-gray-50 p-4 rounded-xl border border-gray-200">
+                 <div className="flex justify-between items-center mb-3">
+                     <h3 className="text-sm font-semibold text-gray-500 uppercase">Cliente</h3>
+                     {onNovoCliente && (
+                         <button 
+                             onClick={onNovoCliente}
+                             className="text-xs font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-1 bg-emerald-50 px-2 py-1 rounded"
+                         >
+                             <UserPlus size={12} />
+                             Novo Cliente
+                         </button>
+                     )}
+                 </div>
+                 
+                 <select
+                     className="w-full p-3 border border-gray-200 rounded-lg bg-white text-gray-800 font-medium mb-3"
+                     value={cliente?.id || ""}
+                     onChange={(e) => {
+                         if (e.target.value === "") {
+                             onClienteChange && onClienteChange(null)
+                         } else {
+                             const clienteSelecionado = clientesList.find(c => c.id === Number(e.target.value))
+                             if (clienteSelecionado && onClienteChange) {
+                                 onClienteChange(clienteSelecionado)
+                             }
+                         }
+                     }}
+                 >
+                     <option value="">Consumidor Final</option>
+                     {clientesList.map((c) => (
+                         <option key={c.id} value={c.id}>{c.nome}</option>
+                     ))}
+                 </select>
+                 
+                 {/* Cliente Info Cards + Actions */}
+                 {cliente && cliente.id && (
+                     <div className="flex gap-3 items-start">
+                         {/* Info Cards */}
+                         <div className="flex gap-2 flex-1">
+                             <div className="bg-blue-50 px-3 py-2 rounded border border-blue-100 flex-1">
+                                 <span className="text-[10px] text-blue-600 block uppercase font-medium">Limite Fiado</span>
+                                 <span className="font-bold text-blue-800 text-sm">
+                                     {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(cliente.limiteFiado || 0)}
+                                 </span>
+                             </div>
+                             <div className="bg-purple-50 px-3 py-2 rounded border border-purple-100 flex-1">
+                                 <span className="text-[10px] text-purple-600 block uppercase font-medium">Pontos</span>
+                                 <span className="font-bold text-purple-800 text-sm">{cliente.pontos || 0}</span>
+                             </div>
+                             <div className="bg-emerald-50 px-3 py-2 rounded border border-emerald-100 flex-1">
+                                 <span className="text-[10px] text-emerald-600 block uppercase font-medium">Saldo Crédito</span>
+                                 <span className="font-bold text-emerald-800 text-sm">
+                                     {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(cliente.saldoCredito || 0)}
+                                 </span>
+                             </div>
+                         </div>
+                         
+                         {/* Action Buttons */}
+                         <div className="flex flex-col gap-1">
+                             {cliente.pontos > 0 && (
+                                 <button 
+                                     className={`text-xs px-3 py-1.5 rounded font-bold border transition-colors ${usarFidelidade 
+                                         ? 'bg-red-100 text-red-600 border-red-200' 
+                                         : 'bg-purple-100 text-purple-600 border-purple-200'}`}
+                                     onClick={() => setUsarFidelidade(!usarFidelidade)}
+                                 >
+                                     <Trophy size={12} className="inline mr-1" />
+                                     {usarFidelidade ? 'Remover Pts' : `Usar ${cliente.pontos} pts`}
+                                 </button>
+                             )}
+                             {creditoDisponivel > 0 && (
+                                 <button 
+                                     className={`text-xs px-3 py-1.5 rounded font-bold border transition-colors ${usarCredito 
+                                         ? 'bg-red-100 text-red-600 border-red-200' 
+                                         : 'bg-emerald-100 text-emerald-600 border-emerald-200'}`}
+                                     onClick={() => {
+                                         if (!usarCredito) {
+                                             const valorUsar = Math.min(creditoDisponivel, restante > 0 ? restante : finalTotal)
+                                             if (valorUsar > 0) {
+                                                 setPagamentos([...pagamentos, { metodo: 'CREDITO', valor: valorUsar, salvarTrocoCredito: false }])
+                                             }
+                                         } else {
+                                             setPagamentos(pagamentos.filter(p => p.metodo !== 'CREDITO'))
+                                         }
+                                         setUsarCredito(!usarCredito)
+                                     }}
+                                 >
+                                     💰 {usarCredito ? 'Remover' : 'Usar Crédito'}
+                                 </button>
+                             )}
+                         </div>
+                     </div>
+                 )}
+             </div>
+
+             {/* Payment Section */}
+             <h3 className="text-lg font-bold text-gray-800 mb-4">Pagamento</h3>
 
              {/* Warnings */}
              {alertFiadoLevel === 'WARNING' && (
@@ -316,11 +372,19 @@ export function ModalCheckout({ isOpen, onClose, cartTotal, subtotalOriginal, di
                  <button 
                     className="bg-gray-900 text-white px-6 rounded-lg font-bold hover:bg-black"
                     onClick={handleAddPagamento}
-                    disabled={restante <= 0}
+                    disabled={restante <= 0 || (metodo === 'FIADO' && !cliente?.id)}
                  >
                     Adicionar
                  </button>
              </div>
+
+             {/* Warning message when FIADO selected without client */}
+             {metodo === 'FIADO' && (!cliente || !cliente.id) && (
+                 <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-center gap-2 text-amber-800 text-sm animate-in fade-in">
+                     <AlertTriangle size={18} />
+                     <span>Selecione um cliente acima para vender Fiado</span>
+                 </div>
+             )}
 
              <div className="flex-1 overflow-y-auto mb-6">
                  <table className="w-full text-left">

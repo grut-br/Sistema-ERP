@@ -3,8 +3,8 @@ class BuscarTodosProdutosUseCase {
     this.produtoRepository = produtoRepository;
   }
 
-  async execute() {
-    return this.produtoRepository.listarTodos();
+  async execute(filters = {}) {
+    return this.produtoRepository.listarTodos(filters);
   }
 }
 

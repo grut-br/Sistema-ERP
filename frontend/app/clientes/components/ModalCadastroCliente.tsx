@@ -9,7 +9,7 @@ interface ModalCadastroClienteProps {
   isOpen: boolean
   onClose: () => void
   cliente: any | null
-  onSuccess: () => void
+  onSuccess: (cliente?: any) => void
 }
 
 interface Endereco {
@@ -226,7 +226,9 @@ export function ModalCadastroCliente({ isOpen, onClose, cliente, onSuccess }: Mo
       })
       
       if (response.ok) {
-        onSuccess()
+        const novoCliente = await response.json()
+        if (onSuccess) onSuccess(novoCliente)
+        onClose() // Default behavior, kept for backward compatibility if onSuccess doesn't handle closing
       } else {
         const err = await response.json()
         toast({ title: "Erro", description: err.error || "Falha ao salvar cliente", variant: "destructive" })
@@ -276,7 +278,7 @@ export function ModalCadastroCliente({ isOpen, onClose, cliente, onSuccess }: Mo
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
         
         <div className="flex justify-between items-center p-6 border-b border-gray-100 sticky top-0 bg-white z-10">
           <h2 className="text-2xl font-bold text-gray-800">
@@ -433,8 +435,8 @@ export function ModalCadastroCliente({ isOpen, onClose, cliente, onSuccess }: Mo
             {/* Form de novo endereço */}
             {showEnderecoForm && (
               <div className="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                <div className="grid grid-cols-6 gap-3">
-                  <div className="col-span-2">
+                <div className="grid grid-cols-12 gap-3">
+                  <div className="col-span-8">
                     <input
                       type="text"
                       placeholder="Título (ex: Casa)"
@@ -443,7 +445,7 @@ export function ModalCadastroCliente({ isOpen, onClose, cliente, onSuccess }: Mo
                       onChange={(e) => setNovoEndereco(prev => ({ ...prev, titulo: e.target.value }))}
                     />
                   </div>
-                  <div className="col-span-2">
+                  <div className="col-span-4">
                     <input
                       type="text"
                       placeholder="CEP"
@@ -454,7 +456,7 @@ export function ModalCadastroCliente({ isOpen, onClose, cliente, onSuccess }: Mo
                     />
                     {isBuscandoCep && <span className="text-xs text-gray-500">Buscando...</span>}
                   </div>
-                  <div className="col-span-4">
+                  <div className="col-span-10">
                     <input
                       type="text"
                       placeholder="Logradouro"
@@ -463,7 +465,7 @@ export function ModalCadastroCliente({ isOpen, onClose, cliente, onSuccess }: Mo
                       onChange={(e) => setNovoEndereco(prev => ({ ...prev, logradouro: e.target.value }))}
                     />
                   </div>
-                  <div className="col-span-1">
+                  <div className="col-span-2">
                     <input
                       type="text"
                       placeholder="Nº"
@@ -472,16 +474,7 @@ export function ModalCadastroCliente({ isOpen, onClose, cliente, onSuccess }: Mo
                       onChange={(e) => setNovoEndereco(prev => ({ ...prev, numero: e.target.value }))}
                     />
                   </div>
-                  <div className="col-span-3">
-                    <input
-                      type="text"
-                      placeholder="Complemento (Apto, Bloco, etc.)"
-                      className="w-full p-2 text-sm border border-gray-300 rounded"
-                      value={novoEndereco.complemento}
-                      onChange={(e) => setNovoEndereco(prev => ({ ...prev, complemento: e.target.value }))}
-                    />
-                  </div>
-                  <div className="col-span-2">
+                  <div className="col-span-6">
                     <input
                       type="text"
                       placeholder="Bairro"
@@ -490,7 +483,7 @@ export function ModalCadastroCliente({ isOpen, onClose, cliente, onSuccess }: Mo
                       onChange={(e) => setNovoEndereco(prev => ({ ...prev, bairro: e.target.value }))}
                     />
                   </div>
-                  <div className="col-span-2">
+                  <div className="col-span-4">
                     <input
                       type="text"
                       placeholder="Cidade"
@@ -499,7 +492,7 @@ export function ModalCadastroCliente({ isOpen, onClose, cliente, onSuccess }: Mo
                       onChange={(e) => setNovoEndereco(prev => ({ ...prev, cidade: e.target.value }))}
                     />
                   </div>
-                  <div className="col-span-1">
+                  <div className="col-span-2">
                     <input
                       type="text"
                       placeholder="UF"
@@ -507,6 +500,15 @@ export function ModalCadastroCliente({ isOpen, onClose, cliente, onSuccess }: Mo
                       className="w-full p-2 text-sm border border-gray-300 rounded uppercase"
                       value={novoEndereco.estado}
                       onChange={(e) => setNovoEndereco(prev => ({ ...prev, estado: e.target.value.toUpperCase() }))}
+                    />
+                  </div>
+                  <div className="col-span-12">
+                    <input
+                      type="text"
+                      placeholder="Complemento (Apto, Bloco, etc.)"
+                      className="w-full p-2 text-sm border border-gray-300 rounded"
+                      value={novoEndereco.complemento}
+                      onChange={(e) => setNovoEndereco(prev => ({ ...prev, complemento: e.target.value }))}
                     />
                   </div>
                 </div>
