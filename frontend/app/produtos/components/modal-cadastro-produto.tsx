@@ -307,10 +307,13 @@ export const ModalCadastroProduto = ({ isOpen, onClose, onSuccess, produtoParaEd
             <div className="col-span-6 form-field">
               <label>Preço Venda *</label>
               <input 
-                type="number" 
+                type="text" 
                 placeholder="0,00"
                 value={formData.precoVenda}
-                onChange={e => setFormData({...formData, precoVenda: e.target.value})}
+                onChange={e => {
+                  const value = e.target.value.replace(/[^0-9,]/g, ''); // Only allow numbers and comma
+                  setFormData({...formData, precoVenda: value})
+                }}
                 className={`w-full ${validationErrors.precoVenda ? 'border-red-500 ring-1 ring-red-500' : ''}`}
               />
             </div>
