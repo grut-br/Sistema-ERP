@@ -4,17 +4,21 @@ import { useState, useEffect } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { X, Link2, AlertTriangle } from "lucide-react"
 
+import { ModalCategoria } from "./modal-categoria"
+
 interface ModalLancamentoProps {
   isOpen: boolean
   onClose: () => void
   onSuccess: () => void
   categorias: any[]
+  onUpdateCategorias?: () => void
   lancamentoParaEditar?: any | null
 }
 
-export function ModalLancamento({ isOpen, onClose, onSuccess, categorias, lancamentoParaEditar }: ModalLancamentoProps) {
+export function ModalLancamento({ isOpen, onClose, onSuccess, categorias, onUpdateCategorias, lancamentoParaEditar }: ModalLancamentoProps) {
   const { toast } = useToast()
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [showCategoryModal, setShowCategoryModal] = useState(false)
   
   const [formData, setFormData] = useState({
     descricao: "",
@@ -68,11 +72,33 @@ export function ModalLancamento({ isOpen, onClose, onSuccess, categorias, lancam
     }
   }
 
+  // Validation State
+  const [errors, setErrors] = useState({
+    descricao: false,
+    valor: false,
+    idCategoria: false,
+  })
+
+  // Limpa erro ao digitar
+  useEffect(() => {
+    if (errors.descricao && formData.descricao) setErrors(prev => ({ ...prev, descricao: false }))
+    if (errors.valor && formData.valor) setErrors(prev => ({ ...prev, valor: false }))
+    if (errors.idCategoria && formData.idCategoria) setErrors(prev => ({ ...prev, idCategoria: false }))
+  }, [formData.descricao, formData.valor, formData.idCategoria, errors])
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!formData.descricao || !formData.valor || !formData.tipo) {
-      toast({ title: "Erro", description: "Preencha os campos obrigatórios.", variant: "destructive" })
+    // Validate
+    const newErrors = {
+      descricao: !formData.descricao.trim(),
+      valor: !formData.valor || Number(formData.valor) <= 0,
+      idCategoria: !formData.idCategoria,
+    }
+
+    if (newErrors.descricao || newErrors.valor || newErrors.idCategoria) {
+      setErrors(newErrors)
+      toast({ title: "Erro", description: "Verifique os campos obrigatórios em vermelho.", variant: "destructive" })
       return
     }
 
@@ -165,7 +191,7 @@ export function ModalLancamento({ isOpen, onClose, onSuccess, categorias, lancam
               onChange={handleChange}
               placeholder="Ex: Aluguel Janeiro"
               disabled={isVinculado}
-              className={isVinculado ? "bg-gray-100 cursor-not-allowed" : ""}
+              className={`${isVinculado ? "bg-gray-100 cursor-not-allowed" : ""} ${errors.descricao ? "border-red-500 ring-1 ring-red-500" : ""}`}
             />
           </div>
 
@@ -194,7 +220,7 @@ export function ModalLancamento({ isOpen, onClose, onSuccess, categorias, lancam
                 step="0.01"
                 min="0"
                 disabled={isVinculado}
-                className={isVinculado ? "bg-gray-100 cursor-not-allowed" : ""}
+                className={`${isVinculado ? "bg-gray-100 cursor-not-allowed" : ""} ${errors.valor ? "border-red-500 ring-1 ring-red-500" : ""}`}
               />
             </div>
           </div>
@@ -210,13 +236,28 @@ export function ModalLancamento({ isOpen, onClose, onSuccess, categorias, lancam
               />
             </div>
             <div className="form-group">
-              <label>Categoria</label>
-              <select name="idCategoria" value={formData.idCategoria} onChange={handleChange}>
-                <option value="">Sem categoria</option>
-                {filteredCategorias.map((cat: any) => (
-                  <option key={cat.id} value={cat.id}>{cat.nome}</option>
-                ))}
-              </select>
+              <label>Categoria *</label>
+              <div className="flex gap-2">
+                <select 
+                  name="idCategoria" 
+                  value={formData.idCategoria} 
+                  onChange={handleChange}
+                  className={`flex-1 ${errors.idCategoria ? "border-red-500 ring-1 ring-red-500" : ""}`}
+                >
+                  <option value="">Selecione</option>
+                  {filteredCategorias.map((cat: any) => (
+                    <option key={cat.id} value={cat.id}>{cat.nome}</option>
+                  ))}
+                </select>
+                <button 
+                  type="button"
+                  className="px-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-bold text-lg"
+                  onClick={() => setShowCategoryModal(true)}
+                  title="Nova Categoria"
+                >
+                  +
+                </button>
+              </div>
             </div>
           </div>
 
@@ -250,6 +291,15 @@ export function ModalLancamento({ isOpen, onClose, onSuccess, categorias, lancam
             </button>
           </div>
         </form>
+
+        <ModalCategoria 
+          isOpen={showCategoryModal}
+          onClose={() => setShowCategoryModal(false)}
+          onSuccess={() => {
+            if (onUpdateCategorias) onUpdateCategorias()
+            setShowCategoryModal(false)
+          }}
+        />
       </div>
     </div>
   )

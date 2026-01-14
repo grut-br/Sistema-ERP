@@ -315,6 +315,7 @@ export const ModalNovaEntrada = ({ isOpen, onClose, onSuccess, onNovoProduto, co
                    <option key={f.id} value={f.id}>{f.nome}</option>
                  ))}
                </select>
+               {errors.fornecedor && <span className="text-red-500 text-xs mt-1 block">Campo obrigatório</span>}
              </div>
 
              <div className="col-span-4">
@@ -329,6 +330,7 @@ export const ModalNovaEntrada = ({ isOpen, onClose, onSuccess, onNovoProduto, co
                  }}
                  placeholder="Ex: 123456"
                />
+               {errors.numeroNota && <span className="text-red-500 text-xs mt-1 block">Campo obrigatório</span>}
              </div>
 
              <div className="col-span-3">
@@ -342,6 +344,7 @@ export const ModalNovaEntrada = ({ isOpen, onClose, onSuccess, onNovoProduto, co
                     if(errors.dataEmissao) setErrors({...errors, dataEmissao: false})
                  }}
                />
+               {errors.dataEmissao && <span className="text-red-500 text-xs mt-1 block">Campo obrigatório</span>}
              </div>
 
              <div className="col-span-12">
@@ -428,7 +431,7 @@ export const ModalNovaEntrada = ({ isOpen, onClose, onSuccess, onNovoProduto, co
              <div className="font-semibold text-gray-700">Adicionar Itens</div>
              
              {/* New Layout Grid */}
-             <div className="flex gap-4 items-end">
+             <div className="flex gap-4 items-start">
                 
                 {/* 1. Produto - 35% */}
                 <div className="w-[35%]">
@@ -488,6 +491,7 @@ export const ModalNovaEntrada = ({ isOpen, onClose, onSuccess, onNovoProduto, co
                       <Plus size={18} />
                     </button>
                   </div>
+                  {errors.itemProduto && <span className="text-red-500 text-xs mt-1 block">Selecione um produto</span>}
                 </div>
 
                 {/* 2. Qtd - 10% */}
@@ -503,6 +507,7 @@ export const ModalNovaEntrada = ({ isOpen, onClose, onSuccess, onNovoProduto, co
                      }}
                      min="1"
                    />
+                   {errors.itemQtd && <span className="text-red-500 text-xs mt-1 block">Obrigatório</span>}
                 </div>
 
                 {/* 3. Custo Uni - 15% */}
@@ -519,10 +524,11 @@ export const ModalNovaEntrada = ({ isOpen, onClose, onSuccess, onNovoProduto, co
                      }}
                      placeholder="0.00"
                    />
+                   {errors.itemCusto && <span className="text-red-500 text-xs mt-1 block">Obrigatório</span>}
                 </div>
 
                  {/* 4. Sem Validade Checkbox - Auto width */}
-                <div className="flex items-center gap-1.5 h-10 pb-2">
+                <div className="flex items-center gap-1.5 h-10 pb-2 pt-6">
                     <input
                         type="checkbox"
                         id="semValidade"
@@ -554,10 +560,11 @@ export const ModalNovaEntrada = ({ isOpen, onClose, onSuccess, onNovoProduto, co
                         if(errors.itemValidade) setErrors({...errors, itemValidade: false})
                      }}
                    />
+                   {errors.itemValidade && !semValidade && <span className="text-red-500 text-xs mt-1 block">Obrigatório</span>}
                 </div>
 
                 {/* 6. Button - 5% */}
-                <div className="w-[5%]">
+                <div className="w-[5%] pt-6">
                   <button 
                     onClick={handleAddItem}
                     className="w-full h-10 bg-emerald-600 text-white rounded hover:bg-emerald-700 flex items-center justify-center transition-colors"

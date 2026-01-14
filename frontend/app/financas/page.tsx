@@ -566,6 +566,7 @@ export default function FinancasPage() {
           setShowLancamentoModal(false)
         }}
         categorias={categoriasList}
+        onUpdateCategorias={fetchCategorias}
         lancamentoParaEditar={lancamentoToEdit}
       />
 
