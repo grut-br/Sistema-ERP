@@ -77,7 +77,7 @@ export function ModalDetalhesVenda({ isOpen, onClose, vendaId, onCancelSuccess }
   // Calcula o total pago
   const calcularTotalPago = () => {
     if (!venda?.pagamentos) return 0
-    return venda.pagamentos.reduce((sum: number, pag: any) => sum + (pag.valor || 0), 0)
+    return venda.pagamentos.reduce((sum: number, pag: any) => sum + (Number(pag.valor) || 0), 0)
   }
 
   if (!isOpen) return null
@@ -211,6 +211,26 @@ export function ModalDetalhesVenda({ isOpen, onClose, vendaId, onCancelSuccess }
                                ))}
                            </ul>
                            
+                           {/* Troco Display (Moved here by request) */}
+                           {( (venda.troco && Number(venda.troco) > 0) || (calcularTotalPago() - Number(venda.totalVenda) > 0.01) ) && (
+                                <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                                   <div className="flex justify-between items-center text-sm">
+                                       <span className="text-blue-800 flex items-center gap-2">
+                                           <Coins size={14} />
+                                           {venda.troco > 0 
+                                             ? `Troco em ${venda.destinoTroco || 'DINHEIRO'}` 
+                                             : `Troco em ${venda.destinoTroco || 'DINHEIRO'}`}
+                                       </span>
+                                       <span className="font-bold text-blue-900">
+                                           {formatCurrency(venda.troco > 0 
+                                              ? venda.troco 
+                                              : (calcularTotalPago() - Number(venda.totalVenda))
+                                           )}
+                                       </span>
+                                   </div>
+                                </div>
+                            )}
+                           
                            {/* Troco que virou crédito */}
                            {venda.creditoGerado > 0 && (
                                <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
@@ -241,8 +261,15 @@ export function ModalDetalhesVenda({ isOpen, onClose, vendaId, onCancelSuccess }
                                </div>
                                {calcularTotalPago() > venda.totalVenda && (
                                    <div className="text-xs text-blue-600">
-                                       Pago: {formatCurrency(calcularTotalPago())} 
-                                       (Troco: {formatCurrency(calcularTotalPago() - venda.totalVenda)})
+                                       Pago: {formatCurrency(calcularTotalPago())}
+                                   </div>
+                               )}
+                               
+                               {/* Change Display from Persistence */}
+                               {(venda.troco > 0) && (
+                                   <div className="mt-2 p-2 bg-blue-50 border border-blue-100 rounded text-right">
+                                       <span className="text-xs text-gray-500 block uppercase">Troco ({venda.destinoTroco || 'DINHEIRO'})</span>
+                                       <span className="text-lg font-bold text-blue-700">{formatCurrency(venda.troco)}</span>
                                    </div>
                                )}
                            </div>

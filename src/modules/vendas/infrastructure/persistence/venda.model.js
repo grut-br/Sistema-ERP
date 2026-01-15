@@ -11,6 +11,8 @@ const VendaModel = sequelize.define('Venda', {
   descontoManual: { type: DataTypes.DECIMAL(10, 2), defaultValue: 0, field: 'desconto_manual' },
   descontoPontos: { type: DataTypes.DECIMAL(10, 2), defaultValue: 0, field: 'desconto_pontos' },
   creditoGerado: { type: DataTypes.DECIMAL(10, 2), defaultValue: 0, field: 'credito_gerado' },
+  troco: { type: DataTypes.DECIMAL(10, 2), defaultValue: 0 },
+  destinoTroco: { type: DataTypes.ENUM('DINHEIRO', 'PIX', 'CAIXA', 'CREDITO'), field: 'destino_troco' },
   status: {
     type: DataTypes.STRING,
     allowNull: false,

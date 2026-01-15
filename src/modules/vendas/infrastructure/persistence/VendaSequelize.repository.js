@@ -52,7 +52,9 @@ const VendaMapper = {
       cliente: model.cliente ? model.cliente.toJSON() : null,
       descontoManual: parseFloat(model.descontoManual) || 0,
       descontoPontos: parseFloat(model.descontoPontos) || 0,
-      creditoGerado: parseFloat(model.creditoGerado) || 0
+      creditoGerado: parseFloat(model.creditoGerado) || 0,
+      troco: parseFloat(model.troco) || 0,
+      destinoTroco: model.destinoTroco
     });
   }
 };
@@ -88,6 +90,8 @@ class VendaSequelizeRepository extends IVendaRepository {
         totalVenda: venda.totalVenda,
         descontoManual: venda.descontoManual || 0,
         descontoPontos: venda.descontoPontos || 0,
+        troco: venda.troco || 0,
+        destinoTroco: venda.destinoTroco,
         status: 'CONCLUIDA',
       }, { transaction: t });
 

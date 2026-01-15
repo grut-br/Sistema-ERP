@@ -133,6 +133,7 @@ class RegistrarVendaUseCase {
       totalVenda: totalComDesconto, // Usa o total com desconto
       pagamentos, 
       destinoTroco,
+      troco: troco > 0 ? troco : 0, // Persist Change Amount
       descontoManual: descontoManual || 0,
       descontoPontos: descontoFidelidade
     });
