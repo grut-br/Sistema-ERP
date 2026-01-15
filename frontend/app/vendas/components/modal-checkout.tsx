@@ -170,12 +170,22 @@ export function ModalCheckout({ isOpen, onClose, cartTotal, subtotalOriginal, di
           } else {
               const err = await res.json()
               const msg = err.error || "Falha ao processar venda"
-              toast({ title: "Erro na Venda", description: msg, variant: "destructive" })
+              
+              if (msg.includes("Caixa") && msg.includes("fechado")) {
+                  toast({ title: "Caixa Fechado", description: msg, variant: "destructive" })
+              } else {
+                  toast({ title: "Erro na Venda", description: msg, variant: "destructive" })
+              }
           }
       } catch (e: any) {
           console.error(e)
           const msg = e.message || "Erro de conexão"
-          toast({ title: "Erro Crítico", description: msg, variant: "destructive" })
+          // Se for erro de caixa fechado, mostra como Warning, não erro crítico
+          if (msg.includes("Caixa") && msg.includes("fechado")) {
+              toast({ title: "Caixa Fechado", description: msg, variant: "destructive" })
+          } else {
+              toast({ title: "Erro na Venda", description: msg, variant: "destructive" })
+          }
       }
   }
 

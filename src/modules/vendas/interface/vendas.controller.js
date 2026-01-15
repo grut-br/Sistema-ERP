@@ -41,7 +41,11 @@ class VendaController {
       
       res.status(201).json(venda);
     } catch (error) {
-      res.status(400).json({ error: error.message });
+       console.error('ERRO AO CRIAR VENDA:', error); // Melhorar log para debug
+       
+       // Se for erro de caixa fechado, mantém 400 (Bad Request)
+       // O Frontend espera { error: "mensagem" }
+       res.status(400).json({ error: error.message });
     }
   }
   

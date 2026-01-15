@@ -10,6 +10,7 @@ const fornecedorRoutes = require('./modules/fornecedores/interface/fornecedores.
 const compraRoutes = require('./modules/compras/interface/compras.routes');
 const notificacaoRoutes = require('./modules/notificacoes/interface/notificacoes.routes');
 const combosRoutes = require('./modules/combos/interface/combos.routes');
+const caixaRoutes = require('./modules/caixa/interface/caixa.routes');
 
 
 // Importe as outras rotas aqui quando as criar...
@@ -30,6 +31,7 @@ app.use('/fornecedores', fornecedorRoutes);
 app.use('/compras', compraRoutes);
 app.use('/notificacoes', notificacaoRoutes);
 app.use('/combos', combosRoutes);
+app.use('/caixa', caixaRoutes);
 app.use('/fabricantes', require('./modules/fabricantes/interface/fabricantes.routes'));
 
 

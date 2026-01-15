@@ -12,6 +12,7 @@ const NotificacaoSequelizeRepository = require('../../notificacoes/infrastructur
 const CreditoClienteSequelizeRepository = require('../../financeiro/infrastructure/persistence/CreditoClienteSequelize.repository');
 const AdicionarCreditoUseCase = require('../../financeiro/application/adicionarCredito.usecase');
 const UsarCreditoUseCase = require('../../financeiro/application/usarCredito.usecase');
+const CaixaSequelizeRepository = require('../../caixa/infrastructure/persistence/CaixaSequelize.repository');
 
 const PagamentoFactory = require('../domain/factories/PagamentoFactory');
 
@@ -24,6 +25,9 @@ class RegistrarVendaUseCase {
     const lancamentoRepo = new LancamentoSequelizeRepository();
     const notificacaoRepo = new NotificacaoSequelizeRepository();
     const creditoRepo = new CreditoClienteSequelizeRepository();
+    const caixaRepo = new CaixaSequelizeRepository();
+    
+    this.caixaRepository = caixaRepo;
     
     this.criarLancamentoUseCase = new CriarLancamentoUseCase(lancamentoRepo);
     this.adicionarPontosUseCase = new AdicionarPontosUseCase(fidelizacaoRepo);
@@ -54,6 +58,20 @@ class RegistrarVendaUseCase {
   async execute({ idCliente, idUsuario, itens, pagamentos, destinoTroco, pontosUsados, descontoManual }) {
     if (!pagamentos || pagamentos.length === 0) {
       throw new Error('É necessário fornecer pelo menos um método de pagamento.');
+    }
+    
+    // [STRICT] Validação de Caixa
+    const temPagamentoDinheiro = pagamentos.some(p => p.metodo === 'DINHEIRO');
+    // Troco logic validation is trickier before calculation, depends on total. 
+    // But usually if payment is DINHEIRO, we assume potential interaction with physical cash.
+    // If payment is PIX and needs change, we assume change might be PIX or CAIXA. 
+    // User rule: "Se o pagamento for em 'DINHEIRO' (ou se houver troco em dinheiro)"
+    // Let's check sessao first.
+    
+    const sessaoAberta = await this.caixaRepository.buscarSessaoAberta();
+    
+    if (temPagamentoDinheiro && !sessaoAberta) {
+         throw new Error('O Caixa está fechado. É necessário abrir o caixa para realizar vendas em dinheiro.');
     }
     
     let totalVenda = 0;
@@ -100,6 +118,14 @@ class RegistrarVendaUseCase {
       throw new Error(`Pagamento insuficiente. Total: ${totalComDesconto.toFixed(2)}, Pago: ${totalPago.toFixed(2)}`);
     }
 
+    // [STRICT] Check Change vs Closed Box
+    const troco = totalPago - totalComDesconto;
+    if (troco > 0.01 && (!destinoTroco || destinoTroco === 'CAIXA' || destinoTroco === 'DINHEIRO') && !sessaoAberta) {
+       // If giving change in CASH and box is closed.
+       // Even if payment was PIX, if change is CASH, we need open box.
+       throw new Error('O Caixa está fechado. É necessário abrir o caixa para realizar troco em dinheiro.');
+    }
+
     const novaVenda = new Venda({
       idCliente,
       idUsuario,
@@ -111,7 +137,7 @@ class RegistrarVendaUseCase {
       descontoPontos: descontoFidelidade
     });
 
-    return this.vendaRepository.salvar(novaVenda, {
+    const vendaSalva = await this.vendaRepository.salvar(novaVenda, {
       adicionarPontosUseCase: this.adicionarPontosUseCase,
       resgatarPontosUseCase: this.resgatarPontosUseCase,
       criarLancamentoUseCase: this.criarLancamentoUseCase, 
@@ -122,6 +148,36 @@ class RegistrarVendaUseCase {
       resultadosPagamento: resultadosPagamento,
       pontosUsados: pontosUsados || 0
     });
+
+    // 4. Registrar Movimentações no Caixa (Se houver sessao)
+    if (sessaoAberta) {
+         // Entrada Dinheiro
+         const valorDinheiro = pagamentos.filter(p => p.metodo === 'DINHEIRO').reduce((acc, p) => acc + p.valor, 0);
+         if (valorDinheiro > 0) {
+             await this.caixaRepository.registrarMovimentacao({
+                 id_sessao: sessaoAberta.id,
+                 id_venda: vendaSalva.id, // Venda already saved hopefully has ID
+                 tipo: 'ENTRADA',
+                 valor: valorDinheiro,
+                 forma_pagamento: 'DINHEIRO',
+                 descricao: `Venda #${vendaSalva.id}`
+             });
+         }
+         
+         // Saída Troco
+         if (troco > 0.01 && (!destinoTroco || destinoTroco === 'CAIXA' || destinoTroco === 'DINHEIRO')) {
+              await this.caixaRepository.registrarMovimentacao({
+                 id_sessao: sessaoAberta.id,
+                 id_venda: vendaSalva.id,
+                 tipo: 'SAIDA',
+                 valor: troco,
+                 forma_pagamento: 'DINHEIRO',
+                 descricao: `Troco Venda #${vendaSalva.id}`
+             });
+         }
+    }
+
+    return vendaSalva;
   }
 }
 
