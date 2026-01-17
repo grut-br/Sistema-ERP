@@ -113,7 +113,7 @@ export function ModalFornecedor({ isOpen, onClose, onSuccess, fornecedorParaEdit
         </div>
 
         <div className="modal-body">
-          <div className="form-field" style={{ marginBottom: '12px' }}>
+          <div className="form-field">
             <label>Nome *</label>
             <input
               type="text"
@@ -124,7 +124,7 @@ export function ModalFornecedor({ isOpen, onClose, onSuccess, fornecedorParaEdit
             />
           </div>
           
-          <div className="form-field" style={{ marginBottom: '12px' }}>
+          <div className="form-field">
             <label>CNPJ</label>
             <input
               type="text"
@@ -135,7 +135,7 @@ export function ModalFornecedor({ isOpen, onClose, onSuccess, fornecedorParaEdit
             />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          <div className="form-row">
             <div className="form-field">
               <label>Email</label>
               <input

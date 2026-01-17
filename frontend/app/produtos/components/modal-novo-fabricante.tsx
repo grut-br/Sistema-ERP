@@ -92,14 +92,16 @@ export function ModalNovoFabricante({ isOpen, onClose, onSuccess, fabricantePara
         </div>
 
         <div className="modal-body">
-          <label>Nome</label>
-          <input
-            type="text"
-            value={nome}
-            onChange={(e) => setNome(e.target.value)}
-            placeholder="Ex: Nike, Growth, etc"
-            autoFocus
-          />
+          <div className="form-field">
+            <label>Nome *</label>
+            <input
+              type="text"
+              value={nome}
+              onChange={(e) => setNome(e.target.value)}
+              placeholder="Ex: Nike, Growth, etc"
+              autoFocus
+            />
+          </div>
         </div>
 
         <div className="modal-footer">

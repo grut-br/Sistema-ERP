@@ -165,132 +165,134 @@ export function ModalLancamento({ isOpen, onClose, onSuccess, categorias, onUpda
           </button>
         </div>
 
-        {/* Aviso de lançamento vinculado */}
-        {isVinculado && (
-          <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2">
-            <Link2 size={18} className="text-amber-600 mt-0.5 flex-shrink-0" />
-            <div>
-              <p className="text-sm font-medium text-amber-800">
-                Lançamento vinculado: {tipoVinculo}
-              </p>
-              <p className="text-xs text-amber-600 mt-1">
-                Alguns campos não podem ser alterados pois os valores vêm do registro original.
-                Apenas Data de Vencimento e Categoria podem ser modificados.
-              </p>
+        <div className="modal-body">
+          {/* Aviso de lançamento vinculado */}
+          {isVinculado && (
+            <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2">
+              <Link2 size={18} className="text-amber-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-amber-800">
+                  Lançamento vinculado: {tipoVinculo}
+                </p>
+                <p className="text-xs text-amber-600 mt-1">
+                  Alguns campos não podem ser alterados pois os valores vêm do registro original.
+                  Apenas Data de Vencimento e Categoria podem ser modificados.
+                </p>
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label>Descrição *</label>
-            <input
-              type="text"
-              name="descricao"
-              value={formData.descricao}
-              onChange={handleChange}
-              placeholder="Ex: Aluguel Janeiro"
-              disabled={isVinculado}
-              className={`${isVinculado ? "bg-gray-100 cursor-not-allowed" : ""} ${errors.descricao ? "border-red-500 ring-1 ring-red-500" : ""}`}
-            />
-          </div>
-
-          <div className="form-row">
+          <form onSubmit={handleSubmit}>
             <div className="form-group">
-              <label>Tipo *</label>
+              <label>Descrição *</label>
+              <input
+                type="text"
+                name="descricao"
+                value={formData.descricao}
+                onChange={handleChange}
+                placeholder="Ex: Aluguel Janeiro"
+                disabled={isVinculado}
+                className={`${isVinculado ? "bg-gray-100 cursor-not-allowed" : ""} ${errors.descricao ? "border-red-500 ring-1 ring-red-500" : ""}`}
+              />
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label>Tipo *</label>
+                <select 
+                  name="tipo" 
+                  value={formData.tipo} 
+                  onChange={handleChange}
+                  disabled={isVinculado}
+                  className={isVinculado ? "bg-gray-100 cursor-not-allowed" : ""}
+                >
+                  <option value="DESPESA">Despesa</option>
+                  <option value="RECEITA">Receita</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Valor *</label>
+                <input
+                  type="number"
+                  name="valor"
+                  value={formData.valor}
+                  onChange={handleChange}
+                  placeholder="0,00"
+                  step="0.01"
+                  min="0"
+                  disabled={isVinculado}
+                  className={`${isVinculado ? "bg-gray-100 cursor-not-allowed" : ""} ${errors.valor ? "border-red-500 ring-1 ring-red-500" : ""}`}
+                />
+              </div>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label>Data de Vencimento</label>
+                <input
+                  type="date"
+                  name="dataVencimento"
+                  value={formData.dataVencimento}
+                  onChange={handleChange}
+                />
+              </div>
+              <div className="form-group">
+                <label>Categoria *</label>
+                <div className="flex gap-2">
+                  <select 
+                    name="idCategoria" 
+                    value={formData.idCategoria} 
+                    onChange={handleChange}
+                    className={`flex-1 ${errors.idCategoria ? "border-red-500 ring-1 ring-red-500" : ""}`}
+                  >
+                    <option value="">Selecione</option>
+                    {filteredCategorias.map((cat: any) => (
+                      <option key={cat.id} value={cat.id}>{cat.nome}</option>
+                    ))}
+                  </select>
+                  <button 
+                    type="button"
+                    className="px-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-bold text-lg"
+                    onClick={() => setShowCategoryModal(true)}
+                    title="Nova Categoria"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label>Recorrência</label>
               <select 
-                name="tipo" 
-                value={formData.tipo} 
+                name="frequencia" 
+                value={formData.frequencia} 
                 onChange={handleChange}
                 disabled={isVinculado}
                 className={isVinculado ? "bg-gray-100 cursor-not-allowed" : ""}
               >
-                <option value="DESPESA">Despesa</option>
-                <option value="RECEITA">Receita</option>
+                <option value="NENHUMA">Sem recorrência</option>
+                <option value="SEMANAL">Semanal</option>
+                <option value="MENSAL">Mensal</option>
+                <option value="ANUAL">Anual</option>
               </select>
+              {formData.frequencia !== "NENHUMA" && !isVinculado && (
+                <p className="text-xs text-blue-600 mt-1">
+                  💡 Ao pagar este lançamento, um novo será criado automaticamente para o próximo período.
+                </p>
+              )}
             </div>
-            <div className="form-group">
-              <label>Valor *</label>
-              <input
-                type="number"
-                name="valor"
-                value={formData.valor}
-                onChange={handleChange}
-                placeholder="0,00"
-                step="0.01"
-                min="0"
-                disabled={isVinculado}
-                className={`${isVinculado ? "bg-gray-100 cursor-not-allowed" : ""} ${errors.valor ? "border-red-500 ring-1 ring-red-500" : ""}`}
-              />
-            </div>
-          </div>
 
-          <div className="form-row">
-            <div className="form-group">
-              <label>Data de Vencimento</label>
-              <input
-                type="date"
-                name="dataVencimento"
-                value={formData.dataVencimento}
-                onChange={handleChange}
-              />
+            <div className="form-actions">
+              <button type="button" className="btn-cancel" onClick={onClose}>
+                Cancelar
+              </button>
+              <button type="submit" className="btn-submit" disabled={isSubmitting}>
+                {isSubmitting ? "Salvando..." : (lancamentoParaEditar ? "Atualizar" : "Criar")}
+              </button>
             </div>
-            <div className="form-group">
-              <label>Categoria *</label>
-              <div className="flex gap-2">
-                <select 
-                  name="idCategoria" 
-                  value={formData.idCategoria} 
-                  onChange={handleChange}
-                  className={`flex-1 ${errors.idCategoria ? "border-red-500 ring-1 ring-red-500" : ""}`}
-                >
-                  <option value="">Selecione</option>
-                  {filteredCategorias.map((cat: any) => (
-                    <option key={cat.id} value={cat.id}>{cat.nome}</option>
-                  ))}
-                </select>
-                <button 
-                  type="button"
-                  className="px-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-bold text-lg"
-                  onClick={() => setShowCategoryModal(true)}
-                  title="Nova Categoria"
-                >
-                  +
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div className="form-group">
-            <label>Recorrência</label>
-            <select 
-              name="frequencia" 
-              value={formData.frequencia} 
-              onChange={handleChange}
-              disabled={isVinculado}
-              className={isVinculado ? "bg-gray-100 cursor-not-allowed" : ""}
-            >
-              <option value="NENHUMA">Sem recorrência</option>
-              <option value="SEMANAL">Semanal</option>
-              <option value="MENSAL">Mensal</option>
-              <option value="ANUAL">Anual</option>
-            </select>
-            {formData.frequencia !== "NENHUMA" && !isVinculado && (
-              <p className="text-xs text-blue-600 mt-1">
-                💡 Ao pagar este lançamento, um novo será criado automaticamente para o próximo período.
-              </p>
-            )}
-          </div>
-
-          <div className="form-actions">
-            <button type="button" className="btn-cancel" onClick={onClose}>
-              Cancelar
-            </button>
-            <button type="submit" className="btn-submit" disabled={isSubmitting}>
-              {isSubmitting ? "Salvando..." : (lancamentoParaEditar ? "Atualizar" : "Criar")}
-            </button>
-          </div>
-        </form>
+          </form>
+        </div>
 
         <ModalCategoria 
           isOpen={showCategoryModal}

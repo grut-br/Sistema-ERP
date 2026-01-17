@@ -115,14 +115,16 @@ export function ModalNovaCategoria({ isOpen, onClose, onSuccess, categoriaParaEd
 
         {/* BODY */}
         <div className="modal-body">
-          <label>Nome</label>
-          <input
-            type="text"
-            value={nome}
-            onChange={(e) => setNome(e.target.value)}
-            placeholder="Ex: Suplementos"
-            autoFocus
-          />
+          <div className="form-field">
+            <label>Nome *</label>
+            <input
+              type="text"
+              value={nome}
+              onChange={(e) => setNome(e.target.value)}
+              placeholder="Ex: Suplementos"
+              autoFocus
+            />
+          </div>
         </div>
 
         {/* FOOTER */}
