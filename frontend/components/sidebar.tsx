@@ -8,7 +8,6 @@ const menuItems = [
   { name: 'Home', icon: Home, href: '/' },
   { name: 'Vendas', icon: Tag, href: '/vendas' },
   { name: 'Caixa', icon: Wallet, href: '/caixa' },
-  { name: 'Pedidos', icon: Package, href: '/pedidos' },
   { name: 'Produtos', icon: Grid, href: '/produtos' },
   { name: 'Compras', icon: ShoppingBag, href: '/compras' },
   { name: 'Finanças', icon: DollarSign, href: '/financas' },
