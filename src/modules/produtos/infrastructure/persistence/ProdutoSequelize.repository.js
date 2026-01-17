@@ -1,4 +1,5 @@
 const IProdutoRepository = require('../../domain/repositories/IProdutoRepository');
+const sequelize = require('../../../../shared/infra/database');
 const ProdutoModel = require('./produto.model');
 const Produto = require('../../domain/entities/produto.entity');
 const CategoriaModel = require('../../../categorias/infrastructure/persistence/categoria.model');
@@ -33,6 +34,28 @@ const ProdutoMapper = {
       eKit: model.eKit,
       status: model.status,
       estoqueMinimo: model.estoqueMinimo,
+      componentes: model.componentes ? model.componentes.map(comp => ({
+          idProdutoPai: comp.idProdutoPai,
+          idProdutoFilho: comp.idProdutoFilho,
+          quantidade: comp.quantidade,
+          precoNoCombo: comp.precoNoCombo,
+          produto: comp.produtoFilho ? (() => {
+              // Calculate weighted average cost from lotes
+              const lotes = comp.produtoFilho.lotes || [];
+              const totalQtd = lotes.reduce((acc, l) => acc + Number(l.quantidade), 0);
+              const totalValor = lotes.reduce((acc, l) => acc + (Number(l.quantidade) * Number(l.custoUnitario || 0)), 0);
+              const precoCustoMedio = totalQtd > 0 ? (totalValor / totalQtd) : 0;
+              
+              return {
+                  id: comp.produtoFilho.id,
+                  nome: comp.produtoFilho.nome,
+                  precoVenda: comp.produtoFilho.precoVenda,
+                  precoCusto: precoCustoMedio,
+                  urlImagem: comp.produtoFilho.urlImagem,
+                  estoque: totalQtd
+              };
+          })() : null
+      })) : []
     });
   },
   toPersistence(entity) {
@@ -59,8 +82,30 @@ const ProdutoMapper = {
 class ProdutoSequelizeRepository extends IProdutoRepository {
   async salvar(produto) {
     const data = ProdutoMapper.toPersistence(produto);
-    const novoProdutoModel = await ProdutoModel.create(data);
-    return this.buscarPorId(novoProdutoModel.id); // Busca com include para retornar o objeto completo
+    
+    // Start Transaction
+    const t = await sequelize.transaction();
+
+    try {
+        const novoProdutoModel = await ProdutoModel.create(data, { transaction: t });
+
+        // Se for KIT e tiver composição, salva os componentes
+        if (produto.eKit && produto.composicao && produto.composicao.length > 0) {
+            const composicaoData = produto.composicao.map(item => ({
+                idProdutoPai: novoProdutoModel.id,
+                idProdutoFilho: item.idProdutoFilho, 
+                quantidade: item.quantidade,
+                precoNoCombo: item.precoNoCombo || 0
+            }));
+            await ComposicaoKitModel.bulkCreate(composicaoData, { transaction: t });
+        }
+
+        await t.commit();
+        return this.buscarPorId(novoProdutoModel.id);
+    } catch (e) {
+        await t.rollback();
+        throw e;
+    }
   }
 
   async buscarPorId(id) {
@@ -69,17 +114,42 @@ class ProdutoSequelizeRepository extends IProdutoRepository {
         { model: CategoriaModel, as: 'categoria' },
         { model: FabricanteModel, as: 'fabricante' },
         // Inclui TODOS os lotes (inclusive negativos) para calcular estoque real
-        { model: LoteModel, as: 'lotes', required: false }
+        { model: LoteModel, as: 'lotes', required: false },
+        { 
+            model: ComposicaoKitModel, 
+            as: 'componentes',
+            include: [{ 
+                model: ProdutoModel, 
+                as: 'produtoFilho', 
+                include: [{ model: LoteModel, as: 'lotes', required: false }] 
+            }] 
+        }
       ]
     });
     
     if (!produtoModel) return null;
 
-    const estoqueTotal = produtoModel.lotes ? produtoModel.lotes.reduce((soma, lote) => soma + lote.quantidade, 0) : 0;
     const produto = ProdutoMapper.toDomain(produtoModel);
-    produto.estoque = estoqueTotal; 
 
-    return produto;  }
+    if (produto.eKit && produtoModel.componentes && produtoModel.componentes.length > 0) {
+         // CÁLCULO DE ESTOQUE VIRTUAL
+         // Para cada componente, calcula estoque total e divide pela qtd necessária
+         const limites = produtoModel.componentes.map(comp => {
+             const produtoFilho = comp.produtoFilho;
+             const estoqueFilho = produtoFilho && produtoFilho.lotes 
+                ? produtoFilho.lotes.reduce((sum, l) => sum + l.quantidade, 0)
+                : 0;
+             return Math.floor(estoqueFilho / comp.quantidade); 
+         });
+         // O estoque do kit é o menor limitante (Gargalo)
+         produto.estoque = Math.min(...limites);
+    } else {
+         const estoqueTotal = produtoModel.lotes ? produtoModel.lotes.reduce((soma, lote) => soma + lote.quantidade, 0) : 0;
+         produto.estoque = estoqueTotal;
+    }
+
+    return produto;  
+  }
 
   async listarTodos(filters = {}) {
     const where = {};
@@ -93,17 +163,38 @@ class ProdutoSequelizeRepository extends IProdutoRepository {
         { model: CategoriaModel, as: 'categoria' },
         { model: FabricanteModel, as: 'fabricante' },
         // Inclui TODOS os lotes (inclusive negativos) para calcular estoque real
-        { model: LoteModel, as: 'lotes', required: false }
+        { model: LoteModel, as: 'lotes', required: false },
+        // Necessário incluir componentes -> produtoFilho -> lotes para calcular estoque virtual
+        { 
+            model: ComposicaoKitModel, 
+            as: 'componentes',
+            include: [{ 
+                model: ProdutoModel, 
+                as: 'produtoFilho', 
+                include: [{ model: LoteModel, as: 'lotes', required: false }] 
+            }] 
+        }
       ],
       order: [['nome', 'ASC']]
     });
 
-    // Para cada produto, calculamos o estoque total
     const produtos = produtosModel.map(model => {
-      const estoqueTotal = model.lotes ? model.lotes.reduce((soma, lote) => soma + lote.quantidade, 0) : 0;
-      
       const produto = ProdutoMapper.toDomain(model);
-      produto.estoque = estoqueTotal;
+
+      if (model.eKit && model.componentes && model.componentes.length > 0) {
+         // Lógica de Estoque Virtual (Mesma do buscarPorId)
+         const limites = model.componentes.map(comp => {
+             const produtoFilho = comp.produtoFilho;
+             const estoqueFilho = produtoFilho && produtoFilho.lotes 
+                ? produtoFilho.lotes.reduce((sum, l) => sum + l.quantidade, 0)
+                : 0;
+            return Math.floor(estoqueFilho / comp.quantidade);
+         });
+         produto.estoque = Math.min(...limites);
+      } else {
+         const estoqueTotal = model.lotes ? model.lotes.reduce((soma, lote) => soma + lote.quantidade, 0) : 0;
+         produto.estoque = estoqueTotal;
+      }
       return produto;
     });
 
@@ -112,10 +203,42 @@ class ProdutoSequelizeRepository extends IProdutoRepository {
 
   async atualizar(produto) {
     const data = ProdutoMapper.toPersistence(produto);
-    await ProdutoModel.update(data, {
-      where: { id: produto.id }
-    });
-    return this.buscarPorId(produto.id);
+    
+    // Start Transaction for atomic update
+    const t = await sequelize.transaction();
+    
+    try {
+        await ProdutoModel.update(data, {
+          where: { id: produto.id },
+          transaction: t
+        });
+
+        // Se for KIT, atualiza a composição
+        if (produto.eKit && produto.composicao) {
+            // Deleta composição antiga
+            await ComposicaoKitModel.destroy({
+                where: { idProdutoPai: produto.id },
+                transaction: t
+            });
+            
+            // Insere nova composição (se houver)
+            if (produto.composicao.length > 0) {
+                const composicaoData = produto.composicao.map(item => ({
+                    idProdutoPai: produto.id,
+                    idProdutoFilho: item.idProdutoFilho, 
+                    quantidade: item.quantidade,
+                    precoNoCombo: item.precoNoCombo || 0
+                }));
+                await ComposicaoKitModel.bulkCreate(composicaoData, { transaction: t });
+            }
+        }
+
+        await t.commit();
+        return this.buscarPorId(produto.id);
+    } catch (e) {
+        await t.rollback();
+        throw e;
+    }
   }
 
   async deletar(id) {

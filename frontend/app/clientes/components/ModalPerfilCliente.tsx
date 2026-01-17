@@ -236,17 +236,17 @@ export function ModalPerfilCliente({ isOpen, onClose, clienteId }: ModalPerfilCl
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[85vh] flex flex-col overflow-hidden">
         
-        {/* Header */}
-        <div className="flex justify-between items-center p-6 border-b border-gray-100">
+        {/* Header - Green to match table headers */}
+        <div className="bg-emerald-500 text-white p-6 rounded-t-xl flex justify-between items-center">
           <div>
-            <h2 className="text-2xl font-bold text-gray-800">
+            <h2 className="text-2xl font-bold">
               {cliente?.nome || 'Carregando...'}
             </h2>
             {cliente?.cpf && (
-              <p className="text-sm text-gray-500 mt-1">CPF: {cliente.cpf}</p>
+              <p className="text-sm text-white/80 mt-1">CPF: {cliente.cpf}</p>
             )}
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+          <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-colors">
             <X size={24} />
           </button>
         </div>

@@ -87,16 +87,16 @@ export function ModalDetalhesVenda({ isOpen, onClose, vendaId }: ModalDetalhesVe
           ou apenas alto o suficiente */}
       <div className="modal-content max-w-2xl w-full max-h-[90vh] flex flex-col">
         
-        {/* Header */}
-        <div className="modal-header border-b pb-4">
+        {/* Header - Green to match table headers */}
+        <div className="bg-emerald-500 text-white p-4 rounded-t-xl flex justify-between items-center">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-50 rounded-lg">
-              <ShoppingBag className="text-blue-600" size={24} />
+            <div className="p-2 bg-white/10 rounded-lg">
+              <ShoppingBag size={24} />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-gray-800">Venda #{vendaId}</h2>
+              <h2 className="text-xl font-bold">Venda #{vendaId}</h2>
               {venda && (
-                <p className="text-sm text-gray-500 flex items-center gap-2">
+                <p className="text-sm text-white/80 flex items-center gap-2">
                   <Calendar size={14} />
                   {new Date(venda.dataVenda).toLocaleDateString('pt-BR')} às{' '}
                   {new Date(venda.dataVenda).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
@@ -104,8 +104,8 @@ export function ModalDetalhesVenda({ isOpen, onClose, vendaId }: ModalDetalhesVe
               )}
             </div>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-            <X size={20} className="text-gray-500" />
+          <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-colors">
+            <X size={20} />
           </button>
         </div>
 

@@ -12,6 +12,8 @@ import { ModalNovoFabricante } from "./components/modal-novo-fabricante"
 import { ModalCadastroProduto } from "./components/modal-cadastro-produto"
 import { ModalConfirmacao } from "./components/modal-confirmacao"
 import { ModalDetalhesProduto } from "./components/modal-detalhes-produto"
+import { ModalCadastroKit } from "./components/modal-cadastro-kit"
+import { ModalDetalhesKit } from "./components/modal-detalhes-kit"
 import { FilterX } from "lucide-react"
 
 
@@ -28,6 +30,12 @@ export default function ProdutosPage() {
   // Details Modal State
   const [showDetailsModal, setShowDetailsModal] = useState(false)
   const [selectedProductDetails, setSelectedProductDetails] = useState<any | null>(null)
+
+  // Kit Modal State
+  const [showKitModal, setShowKitModal] = useState(false)
+  const [kitToEdit, setKitToEdit] = useState<any | null>(null)
+  const [showKitDetailsModal, setShowKitDetailsModal] = useState(false)
+  const [selectedKitDetails, setSelectedKitDetails] = useState<any | null>(null)
 
   const [editingProduct, setEditingProduct] = useState<any | null>(null)
   const [activeTab, setActiveTab] = useState("itens") // 'itens' | 'compras' | 'fornecedores' | 'categorias'
@@ -55,7 +63,7 @@ export default function ProdutosPage() {
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage, setItemsPerPage] = useState(10)
+  const [itemsPerPage, setItemsPerPage] = useState(15)
 
   // Filter State
   const [searchTerm, setSearchTerm] = useState("")
@@ -77,6 +85,11 @@ export default function ProdutosPage() {
     fetchCategoriasList() 
     fetchFabricantesList()
   }, [activeTab])
+
+  // Reset page to 1 when filters change to prevent showing empty results
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchTerm, selectedCategoryFilter, selectedFabricanteFilter, sortOption, activeTab])
 
   const fetchCategoriasList = async () => {
     try {
@@ -135,9 +148,19 @@ export default function ProdutosPage() {
 
   // Filtering Logic (Client-Side)
   const getFilteredItems = () => {
-    let items = activeTab === 'itens' ? produtos : 
-                activeTab === 'categorias' ? categoriasList : 
-                activeTab === 'fabricantes' ? fabricantes : []
+    let items = []
+    
+    if (activeTab === 'itens') {
+        // Show only Simple Products (eKit is false or null)
+        items = produtos.filter(p => !p.eKit)
+    } else if (activeTab === 'kits') {
+        // Show only Kits (eKit is true)
+        items = produtos.filter(p => p.eKit === true)
+    } else if (activeTab === 'categorias') {
+        items = categoriasList
+    } else if (activeTab === 'fabricantes') {
+        items = fabricantes
+    }
 
     // Search Bar Filter
     if (searchTerm) {
@@ -149,7 +172,7 @@ export default function ProdutosPage() {
     }
 
     // Sorting
-    if (activeTab === 'itens') {
+    if (activeTab === 'itens' || activeTab === 'kits') {
       items.sort((a, b) => {
         if (sortOption === 'name-asc') return a.nome.localeCompare(b.nome)
         if (sortOption === 'name-desc') return b.nome.localeCompare(a.nome)
@@ -228,6 +251,7 @@ export default function ProdutosPage() {
   //Ordem dos botões das tabs/abas
   const tabs = [
     { id: "itens", label: "Itens" },
+    { id: "kits", label: "Kits / Combos" }, // New Tab
     { id: "categorias", label: "Categorias" },
     { id: "fabricantes", label: "Fabricantes" },
   ]
@@ -533,6 +557,15 @@ export default function ProdutosPage() {
                 </button>
               )}
 
+              {activeTab === 'kits' && (
+                <button className="btn-cadastrar bg-indigo-600 hover:bg-indigo-700" onClick={() => {
+                   setKitToEdit(null)
+                   setShowKitModal(true)
+                }}>
+                  Novo Kit +
+                </button>
+              )}
+
               {activeTab === 'categorias' && (
                 <button className="btn-cadastrar" onClick={() => {
                   setCategoryToEdit(null)
@@ -623,6 +656,76 @@ export default function ProdutosPage() {
               )}
 
 
+
+              {/* TABELA KITS */}
+              {activeTab === 'kits' && (
+                <table className="produtos-table">
+                  <thead>
+                    <tr>
+                      <th className="w-[10%] text-center whitespace-nowrap">Ação</th>
+                      <th className="w-[35%] whitespace-nowrap">Nome do Kit</th>
+                      <th className="w-[20%] whitespace-nowrap">Preço Venda</th>
+                      <th className="w-[20%] whitespace-nowrap">Estoque (Virtual)</th>
+                      <th className="w-[15%] whitespace-nowrap">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {isLoading ? (
+                      <tr><td colSpan={5} className="text-center py-8">Carregando...</td></tr>
+                    ) : currentDisplayItems.length === 0 ? (
+                      <tr><td colSpan={5} className="text-center py-8">Nenhum kit encontrado</td></tr>
+                    ) : currentDisplayItems.map((produto) => {
+                       const status = getProductStatus(produto.estoque || 0, produto.status || 'ATIVO', 1)
+                       return (
+                      <tr key={produto.id}>
+                        <td>
+                          <div className="flex justify-center items-center gap-2">
+                             <button
+                              className="p-2 text-blue-500 hover:bg-blue-50 rounded-md transition-colors"
+                              title="Ver Detalhes"
+                              onClick={() => {
+                                  setSelectedKitDetails(produto)
+                                  setShowKitDetailsModal(true)
+                              }}
+                             >
+                               <Eye size={18} />
+                             </button>
+                             <button
+                              className="p-2 text-amber-500 hover:bg-amber-50 rounded-md transition-colors"
+                              title="Editar Kit"
+                              onClick={() => {
+                                  setKitToEdit(produto)
+                                  setShowKitModal(true)
+                              }}
+                             >
+                               <Pencil size={18} />
+                             </button>
+                             <button 
+                              className="p-2 text-red-500 hover:bg-red-50 rounded-md transition-colors"
+                              title="Excluir Kit"
+                              onClick={() => openDeleteProduct(produto)}
+                             >
+                               <Trash2 size={18} />
+                             </button>
+                          </div>
+                        </td>
+                        <td className="whitespace-nowrap font-medium text-gray-800">{produto.nome}</td>
+                        <td className="whitespace-nowrap font-semibold text-emerald-600">
+                            {formatCurrency(produto.precoVenda)}
+                        </td>
+                        <td className="whitespace-nowrap">
+                            <span className="bg-blue-100 text-blue-700 py-1 px-2 rounded text-xs font-bold">
+                                {produto.estoque || 0} CONJ
+                            </span>
+                        </td>
+                        <td className="whitespace-nowrap">
+                          {status && <span className={status.className}>{status.label}</span>}
+                        </td>
+                      </tr>
+                    )})}
+                  </tbody>
+                </table>
+              )}
 
                {/* TABELA CATEGORIAS */}
                {activeTab === 'categorias' && (
@@ -747,6 +850,27 @@ export default function ProdutosPage() {
         onClose={() => setShowAddModal(false)}
         onSuccess={handleProductSuccess}
         produtoParaEditar={editingProduct}
+      />
+
+      <ModalCadastroKit
+        isOpen={showKitModal}
+        onClose={() => setShowKitModal(false)}
+        onSuccess={() => {
+            fetchProdutos()
+            // setShowKitModal(false) // handled by modal logic or onClose
+        }}
+        kitParaEditar={kitToEdit}
+      />
+
+      <ModalDetalhesKit
+        isOpen={showKitDetailsModal}
+        onClose={() => setShowKitDetailsModal(false)}
+        kit={selectedKitDetails}
+        onEdit={(kit) => {
+            setKitToEdit(kit)
+            setShowKitModal(true)
+        }}
+        onDelete={openDeleteProduct}
       />
 
       {/* ============================================ */}

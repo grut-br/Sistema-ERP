@@ -280,11 +280,11 @@ export function ModalCadastroCliente({ isOpen, onClose, cliente, onSuccess }: Mo
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
         
-        <div className="flex justify-between items-center p-6 border-b border-gray-100 sticky top-0 bg-white z-10">
-          <h2 className="text-2xl font-bold text-gray-800">
+        <div className="bg-emerald-500 text-white p-6 rounded-t-xl flex justify-between items-center sticky top-0 z-10">
+          <h2 className="text-2xl font-bold">
             {cliente ? 'Editar Cliente' : 'Novo Cliente'}
           </h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+          <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-colors">
             <X size={24} />
           </button>
         </div>

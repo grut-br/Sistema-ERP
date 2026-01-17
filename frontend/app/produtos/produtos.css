@@ -172,96 +172,9 @@
 }
 
 /* ===================================== */
-/* Abas Superiores */
+/* Tabs, Buttons & Table Styles */
+/* MOVED TO globals.css for consistency */
 /* ===================================== */
-.tabs-container {
-  display: flex;
-  gap: 0.5rem;
-  padding: 1rem 1.5rem;
-  border-bottom: 1px solid #e5e7eb;
-  align-items: center;
-}
-
-.tab {
-  padding: 0.625rem 1.25rem;
-  border: none;
-  background-color: #f3f4f6;
-  color: #6b7280;
-  border-radius: 8px;
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.tab:hover {
-  background-color: #e5e7eb;
-}
-
-.tab.active {
-  background-color: #4b5563;
-  color: white;
-}
-
-.btn-cadastrar {
-  margin-left: auto;
-  padding: 0.625rem 1.5rem;
-  background-color: #10b981;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-weight: 500;
-  cursor: pointer;
-  font-size: 0.875rem;
-}
-
-.btn-cadastrar:hover {
-  background-color: #059669;
-}
-
-/* ===================================== */
-/* Tabela de Produtos */
-/* ===================================== */
-.table-wrapper {
-  overflow-x: auto;
-  width: 100%;
-  max-width: 100%; /* Garante que o wrapper não exceda o container pai */
-}
-
-.produtos-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-/* Cabeçalho verde da tabela */
-.produtos-table thead {
-  background-color: #10b981;
-}
-
-.produtos-table th {
-  padding: 1rem;
-  text-align: center; /* CENTRALIZADO conforme solicitado */
-  font-weight: 800;
-  font-size: 1 rem;
-  color: white;
-  white-space: nowrap;
-}
-
-.produtos-table tbody tr {
-  border-bottom: 1px solid #e5e7eb;
-  transition: background-color 0.2s;
-}
-
-.produtos-table tbody tr:hover {
-  background-color: #f9fafb;
-}
-
-.produtos-table td {
-  padding: 1rem;
-  font-size: 0.875rem;
-  color: #374151;
-  text-align: center;
-}
 
 /* ===================================== */
 /* Status Badge */

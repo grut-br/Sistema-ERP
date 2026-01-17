@@ -187,3 +187,126 @@
 .pagination-select:focus {
   border-color: #10b981;
 }
+
+/* =============================================
+   GLOBAL TABLE STYLES
+   ============================================= */
+
+/* Standard table wrapper for horizontal scroll */
+.table-wrapper {
+  overflow-x: auto;
+  width: 100%;
+  max-width: 100%;
+}
+
+/* Standard data table with green header */
+.data-table,
+.produtos-table,
+.financas-table,
+.extrato-table,
+.vendas-table,
+.clientes-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.data-table thead,
+.produtos-table thead,
+.financas-table thead,
+.extrato-table thead,
+.vendas-table thead,
+.clientes-table thead {
+  background-color: #10b981;
+}
+
+.data-table th,
+.produtos-table th,
+.financas-table th,
+.extrato-table th,
+.vendas-table th,
+.clientes-table th {
+  text-align: center;
+  padding: 1rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: white;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.data-table td,
+.produtos-table td,
+.financas-table td,
+.extrato-table td,
+.vendas-table td,
+.clientes-table td {
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  color: #374151;
+  border-bottom: 1px solid #f1f5f9;
+  text-align: center;
+}
+
+.data-table tbody tr:hover,
+.produtos-table tbody tr:hover,
+.financas-table tbody tr:hover,
+.extrato-table tbody tr:hover,
+.vendas-table tbody tr:hover,
+.clientes-table tbody tr:hover {
+  background-color: #f9fafb;
+}
+
+/* =============================================
+   GLOBAL TABS STYLES
+   ============================================= */
+.tabs-container {
+  display: flex;
+  gap: 0.5rem;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+  align-items: center;
+}
+
+.tab {
+  padding: 0.625rem 1.25rem;
+  border: none;
+  background-color: #f3f4f6;
+  color: #6b7280;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.tab:hover {
+  background-color: #e5e7eb;
+  color: #374151;
+}
+
+.tab.active {
+  background-color: #4b5563;
+  color: white;
+  font-weight: 500;
+}
+
+/* =============================================
+   GLOBAL BUTTON STYLES
+   ============================================= */
+.btn-cadastrar {
+  margin-left: auto;
+  padding: 0.625rem 1.5rem;
+  background-color: #10b981;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: all 0.2s;
+}
+
+.btn-cadastrar:hover {
+  background-color: #059669;
+}

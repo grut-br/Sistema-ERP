@@ -153,24 +153,7 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
-.extrato-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 1rem;
-}
-
-.extrato-table th,
-.extrato-table td {
-  text-align: left;
-  padding: 1rem;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.extrato-table th {
-  font-weight: 600;
-  color: #374151;
-  background-color: #f9fafb;
-}
+/* extrato-table styles moved to globals.css */
 
 .mov-entrada {
   color: #10b981;

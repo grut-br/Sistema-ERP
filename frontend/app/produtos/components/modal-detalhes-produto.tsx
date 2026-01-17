@@ -25,8 +25,8 @@ export function ModalDetalhesProduto({ isOpen, onClose, produto, onEdit, onDelet
       {/* Added 'large' class to match Edit Modal width */}
       <div className="modal-content large !p-0" onClick={e => e.stopPropagation()}>
         
-        {/* Header - Keeping it darker to distinguish 'View' from 'Edit' mode */}
-        <div className="bg-slate-700 text-white p-6 rounded-t-xl flex justify-between items-center">
+        {/* Header - Green to match table headers */}
+        <div className="bg-emerald-500 text-white p-6 rounded-t-xl flex justify-between items-center">
             <h2 className="text-xl font-bold">Detalhes do Produto</h2>
             <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-colors">
                 <X size={24} />
@@ -148,7 +148,7 @@ export function ModalDetalhesProduto({ isOpen, onClose, produto, onEdit, onDelet
             
             <button 
                 onClick={() => { onClose(); onDelete(produto); }}
-                className="px-5 py-2.5 bg-red-50 text-red-600 font-medium hover:bg-red-100 rounded-lg transition-colors flex items-center gap-2 border border-red-200"
+                className="px-5 py-2.5 bg-red-500 text-white font-medium hover:bg-red-600 rounded-lg transition-colors flex items-center gap-2 shadow-sm"
             >
                 <Trash2 size={18} />
                 Excluir

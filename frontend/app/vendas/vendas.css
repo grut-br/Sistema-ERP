@@ -50,43 +50,8 @@
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
-/* Table */
-.vendas-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.vendas-table thead {
-  background: #10b981;
-}
-
-.vendas-table thead th {
-  padding: 16px;
-  text-align: left;
-  font-size: 14px;
-  font-weight: 600;
-  color: white;
-  white-space: nowrap;
-}
-
-.vendas-table tbody tr {
-  border-bottom: 1px solid #f3f4f6;
-  transition: background 0.15s;
-}
-
-.vendas-table tbody tr:hover {
-  background: #f9fafb;
-}
-
-.vendas-table tbody tr:last-child {
-  border-bottom: none;
-}
-
-.vendas-table tbody td {
-  padding: 16px;
-  font-size: 14px;
-  color: #374151;
-}
+/* vendas-table inherits from globals.css (.data-table, .produtos-table) */
+/* Add vendas-table to globals.css if needed */
 
 /* Action button in table */
 .action-btn {

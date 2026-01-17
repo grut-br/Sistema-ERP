@@ -86,20 +86,20 @@ export function ModalDetalhesVenda({ isOpen, onClose, vendaId, onCancelSuccess }
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
         
-        {/* Header */}
-        <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+        {/* Header - Green to match table headers */}
+        <div className="bg-emerald-500 text-white p-6 rounded-t-xl flex justify-between items-center">
            <div>
-              <h2 className="text-xl font-bold text-gray-800">Detalhes da Venda #{vendaId}</h2>
+              <h2 className="text-xl font-bold">Detalhes da Venda #{vendaId}</h2>
               {venda && (
-                 <div className="text-sm text-gray-500 mt-1">
+                 <div className="text-sm text-white/80 mt-1">
                     {new Date(venda.dataVenda).toLocaleString('pt-BR')} - 
                     <span className={`ml-2 font-semibold ${
-                        venda.status === 'CONCLUIDA' ? 'text-green-600' : 'text-red-600'
+                        venda.status === 'CONCLUIDA' ? 'text-green-200' : 'text-red-200'
                     }`}>{venda.status}</span>
                  </div>
               )}
            </div>
-           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+           <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-colors">
              <X size={24} />
            </button>
         </div>

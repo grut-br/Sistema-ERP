@@ -120,83 +120,8 @@
   min-width: 0;
 }
 
-.tabs-container {
-  display: flex;
-  gap: 0.5rem;
-  padding: 1rem 1.5rem;
-  border-bottom: 1px solid #e5e7eb;
-  align-items: center;
-}
-
-.tab {
-  padding: 0.625rem 1.25rem;
-  border: none;
-  background-color: #f3f4f6;
-  color: #6b7280;
-  border-radius: 8px;
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.tab.active {
-  background-color: #4b5563;
-  color: white;
-}
-
-.btn-cadastrar {
-  margin-left: auto;
-  padding: 0.625rem 1.5rem;
-  background-color: #10b981;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-weight: 500;
-  cursor: pointer;
-  font-size: 0.875rem;
-}
-
-.btn-cadastrar:hover {
-  background-color: #059669;
-}
-
-.table-wrapper {
-  overflow-x: auto;
-  width: 100%;
-}
-
-.produtos-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.produtos-table thead {
-  background-color: #10b981;
-}
-
-.produtos-table th {
-  padding: 1rem;
-  text-align: center;
-  font-weight: 800;
-  color: white;
-  white-space: nowrap;
-}
-
-.produtos-table tbody tr {
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.produtos-table tbody tr:hover {
-  background-color: #f9fafb;
-}
-
-.produtos-table td {
-  padding: 1rem;
-  font-size: 0.875rem;
-  color: #374151;
-  text-align: center;
-}
+/* tabs-container, .tab, .btn-cadastrar, .table-wrapper,
+   .produtos-table styles MOVED TO globals.css */
 
 /* Modais Gerais */
 .modal-overlay {
@@ -225,10 +150,11 @@
   animation: modalFade 0.2s ease-out;
 }
 
-/* Classes específicas para ModalFornecedor (trazidas de modal-new-categoria.css) */
+/* Classes específicas para ModalFornecedor - Green header */
 .modal-header {
-  padding: 16px 20px;
-  border-bottom: 1px solid #e5e7eb;
+  padding: 1.25rem 1.5rem;
+  background-color: #10b981;
+  border-radius: 12px 12px 0 0;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -238,13 +164,21 @@
     font-size: 1.1rem;
     font-weight: 600;
     margin: 0;
+    color: white;
 }
 
 .close-btn {
     background: none;
     border: none;
     cursor: pointer;
-    color: #6b7280;
+    color: white;
+    padding: 0.5rem;
+    border-radius: 9999px;
+    transition: background 0.2s;
+}
+
+.close-btn:hover {
+    background: rgba(255,255,255,0.1);
 }
 
 .modal-body {

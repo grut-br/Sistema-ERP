@@ -40,10 +40,10 @@ export function ModalDetalhesCompra({ isOpen, onClose, compraId }: ModalDetalhes
     <div className="modal-overlay" onClick={onClose}>
       <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
         
-        {/* Header */}
-        <div className="flex justify-between items-center p-4 border-b">
+        {/* Header - Green to match table headers */}
+        <div className="bg-emerald-500 text-white p-4 rounded-t-lg flex justify-between items-center">
           <h2 className="text-xl font-bold">Detalhes da Entrada #{compraId}</h2>
-          <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded-full">
+          <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-colors">
             <X size={24} />
           </button>
         </div>

@@ -7,6 +7,7 @@ import { Wallet, TrendingUp, TrendingDown, ArrowUpCircle, ArrowDownCircle, Lock 
 import "./caixa.css"
 import { ModalMovimentacao } from "./components/modal-movimentacao"
 import { ModalFecharCaixa } from "./components/modal-fechar-caixa"
+import { Pagination } from "@/components/Pagination"
 
 export default function CaixaPage() {
     const { toast } = useToast()
@@ -21,6 +22,10 @@ export default function CaixaPage() {
     const [showSangria, setShowSangria] = useState(false)
     const [showSuprimento, setShowSuprimento] = useState(false)
     const [showFechar, setShowFechar] = useState(false)
+
+    // Pagination
+    const [currentPage, setCurrentPage] = useState(1)
+    const [itemsPerPage, setItemsPerPage] = useState(15)
 
     useEffect(() => {
         fetchStatus()
@@ -206,7 +211,12 @@ export default function CaixaPage() {
 
                         {/* Extrato Table */}
                         <div className="extrato-section">
-                            <h3 className="font-bold text-lg mb-4 text-gray-700">Extrato de Movimentações (Sessão Atual)</h3>
+                            <div className="flex justify-between items-center mb-4">
+                                <h3 className="font-bold text-lg text-gray-700">Extrato de Movimentações (Sessão Atual)</h3>
+                                <button className="btn-fechar-caixa shadow-lg hover:shadow-xl transition-all" onClick={() => setShowFechar(true)}>
+                                    Fechar Caixa
+                                </button>
+                            </div>
                             <div className="overflow-x-auto">
                             <table className="extrato-table">
                                 <thead>
@@ -219,44 +229,58 @@ export default function CaixaPage() {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {sessaoData?.movimentacoes && sessaoData.movimentacoes.length > 0 ? (
+                                    {(() => {
                                         // Sort reverse chronological
-                                        [...sessaoData.movimentacoes].sort((a: any, b: any) => new Date(b.criado_em).getTime() - new Date(a.criado_em).getTime())
-                                        .map((mov: any) => (
-                                            <tr key={mov.id}>
-                                                <td>{new Date(mov.criado_em).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}</td>
-                                                <td>
-                                                    <span className={`font-semibold px-2 py-1 rounded text-xs ${
-                                                        mov.tipo === 'ENTRADA' ? 'bg-green-100 text-green-800' :
-                                                        mov.tipo === 'SUPRIMENTO' ? 'bg-green-100 text-green-800' :
-                                                        'bg-red-100 text-red-800'
-                                                    }`}>
-                                                        {mov.tipo}
-                                                    </span>
-                                                </td>
-                                                <td>{mov.descricao || '-'}</td>
-                                                <td className={
-                                                    (mov.tipo === 'SAIDA' || mov.tipo === 'SANGRIA') ? 'text-red-600 font-bold' : 'text-green-600 font-bold'
-                                                }>
-                                                    {formatCurrency(mov.valor)}
-                                                </td>
-                                                <td>{mov.forma_pagamento}</td>
+                                        const allMovs = sessaoData?.movimentacoes
+                                            ? [...sessaoData.movimentacoes].sort((a: any, b: any) => new Date(b.criado_em).getTime() - new Date(a.criado_em).getTime())
+                                            : []
+                                        
+                                        // Pagination
+                                        const totalPages = Math.ceil(allMovs.length / itemsPerPage)
+                                        const currentMovs = allMovs.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+                                        
+                                        return currentMovs.length > 0 ? (
+                                            currentMovs.map((mov: any) => (
+                                                <tr key={mov.id}>
+                                                    <td>{new Date(mov.criado_em).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}</td>
+                                                    <td>
+                                                        <span className={`font-semibold px-2 py-1 rounded text-xs ${
+                                                            mov.tipo === 'ENTRADA' ? 'bg-green-100 text-green-800' :
+                                                            mov.tipo === 'SUPRIMENTO' ? 'bg-green-100 text-green-800' :
+                                                            'bg-red-100 text-red-800'
+                                                        }`}>
+                                                            {mov.tipo}
+                                                        </span>
+                                                    </td>
+                                                    <td>{mov.descricao || '-'}</td>
+                                                    <td className={
+                                                        (mov.tipo === 'SAIDA' || mov.tipo === 'SANGRIA') ? 'text-red-600 font-bold' : 'text-green-600 font-bold'
+                                                    }>
+                                                        {formatCurrency(mov.valor)}
+                                                    </td>
+                                                    <td>{mov.forma_pagamento}</td>
+                                                </tr>
+                                            ))
+                                        ) : (
+                                            <tr>
+                                                <td colSpan={5} className="text-center text-gray-500 py-4">Nenhuma movimentação registrada.</td>
                                             </tr>
-                                        ))
-                                    ) : (
-                                        <tr>
-                                            <td colSpan={5} className="text-center text-gray-500 py-4">Nenhuma movimentação registrada.</td>
-                                        </tr>
-                                    )}
+                                        )
+                                    })()}
                                 </tbody>
                             </table>
                             </div>
 
-                            <div className="footer-actions">
-                                <button className="btn-fechar-caixa shadow-lg hover:shadow-xl transition-all" onClick={() => setShowFechar(true)}>
-                                    Fechar Caixa
-                                </button>
-                            </div>
+                            {/* Pagination */}
+                            {sessaoData?.movimentacoes && sessaoData.movimentacoes.length > 0 && (
+                                <Pagination 
+                                    currentPage={currentPage}
+                                    totalPages={Math.ceil(sessaoData.movimentacoes.length / itemsPerPage)}
+                                    itemsPerPage={itemsPerPage}
+                                    onPageChange={setCurrentPage}
+                                    onItemsPerPageChange={(n) => { setItemsPerPage(n); setCurrentPage(1); }}
+                                />
+                            )}
                         </div>
                     </div>
                 )}

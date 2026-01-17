@@ -35,7 +35,7 @@ export default function ClientesPage() {
   
   // -- Pagination State --
   const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage, setItemsPerPage] = useState(10)
+  const [itemsPerPage, setItemsPerPage] = useState(15)
   
   // -- Filters State --
   const [searchTerm, setSearchTerm] = useState('')
@@ -200,7 +200,7 @@ export default function ClientesPage() {
   return (
     <div className="flex min-h-screen bg-gray-100">
       <Sidebar />
-      <div className="flex-1 ml-[190px] p-8 transition-all">
+      <div className="flex-1 ml-[190px] p-8 transition-all overflow-hidden">
         {/* Header */}
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold text-gray-800">Clientes</h1>

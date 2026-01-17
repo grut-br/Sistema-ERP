@@ -1,5 +1,5 @@
 class Produto {
-  constructor({ id, nome, descricao, id_categoria, idCategoria, categoria, precoCusto, precoVenda, quantidadeEstoque, estoqueMinimo, dataValidade, codigoBarras, urlImagem, eKit, id_fabricante, idFabricante, fabricante, status, lotes }) {
+  constructor({ id, nome, descricao, id_categoria, idCategoria, categoria, precoCusto, precoVenda, quantidadeEstoque, estoqueMinimo, dataValidade, codigoBarras, urlImagem, eKit, id_fabricante, idFabricante, fabricante, status, lotes, componentes, composicao }) {
     this.id = id;
     this.nome = nome;
     this.descricao = descricao;
@@ -17,6 +17,8 @@ class Produto {
     this.eKit = !!eKit;
     // this.fabricante string removed, now using object above
     this.status = status || 'ATIVO';
+    this.componentes = componentes || [];
+    this.composicao = composicao || []; // For creating/updating kit components
 
     this.lotes = lotes || [];
     this.estoque = this.lotes.reduce((acc, lote) => acc + (lote.quantidade || 0), 0);

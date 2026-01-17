@@ -18,8 +18,9 @@
 }
 
 .modal-header {
-  padding: 16px 20px;
-  border-bottom: 1px solid #e5e7eb;
+  padding: 1rem 1.25rem;
+  background-color: #10b981;
+  border-radius: 12px 12px 0 0;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -29,13 +30,21 @@
   font-size: 1.1rem;
   font-weight: 600;
   margin: 0;
+  color: white;
 }
 
 .close-btn {
   background: none;
   border: none;
   cursor: pointer;
-  color: #6b7280;
+  color: white;
+  padding: 0.5rem;
+  border-radius: 9999px;
+  transition: background 0.2s;
+}
+
+.close-btn:hover {
+  background: rgba(255,255,255,0.1);
 }
 
 .modal-body {
